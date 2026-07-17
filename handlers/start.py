@@ -75,6 +75,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += t["help_gas"]
     text += t["help_portfolio"]
     text += t["help_ask"]
+    text += t["help_watch"]
 
     if lang == "fa":
         text += "\n🌐 `/lang` — تغییر زبان"
