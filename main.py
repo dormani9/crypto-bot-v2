@@ -100,7 +100,25 @@ def main():
         print("ERROR: Set TELEGRAM_BOT_TOKEN in .env")
         sys.exit(1)
 
-    app = ApplicationBuilder().token(token).build()
+    async def post_init(app):
+        await app.bot.set_my_commands([
+            ("start", "Start / راه‌اندازی"),
+            ("help", "Help / راهنما"),
+            ("price", "Crypto prices / قیمت"),
+            ("fng", "Fear & Greed"),
+            ("news", "Crypto news / اخبار"),
+            ("whale", "Whale alerts"),
+            ("gas", "Gas fees"),
+            ("ask", "Ask AI / بپرس"),
+            ("toman", "USD to Toman"),
+            ("watch", "Monitor wallet / رصد ولت"),
+            ("unwatch", "Stop monitoring"),
+            ("wallets", "List watched wallets"),
+            ("check", "Scan wallets now"),
+        ])
+        news.refresh_cache()
+
+    app = ApplicationBuilder().token(token).post_init(post_init).build()
 
     for module in [price, fng, news, whale, gas, toman, menu, watch]:
         for handler in module.get_handlers():
@@ -116,6 +134,7 @@ def main():
     jq = app.job_queue
     if jq:
         jq.run_repeating(check_wallets, interval=15, first=10)
+        jq.run_repeating(lambda _: news.refresh_cache(), interval=3600, first=60)
 
     print("Bot v2 is running...")
     app.run_polling()

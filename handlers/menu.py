@@ -1,17 +1,12 @@
 import os
 
-import feedparser
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, ContextTypes, filters
 
+from handlers import news as news_mod
 from lang import EN, FA, get_lang
 from utils import fetch_prices, fetch_toman_price
-
-FEEDS = [
-    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
-    ("CoinTelegraph", "https://cointelegraph.com/rss"),
-]
 
 
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -33,7 +28,8 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ic = "🟢" if ch and ch >= 0 else "🔴"
             lines.append(f"{ic} *{cid.title()}*: `${p:,.2f}` _{cs}_")
         lines.append(t["custom_coins"])
-        kb = [[InlineKeyboardButton(t["back"], callback_data="menu_back")]]
+        kb = [[InlineKeyboardButton("🔄", callback_data="menu_price")],
+              [InlineKeyboardButton(t["back"], callback_data="menu_back")]]
         await query.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
     elif data == "menu_fng":
@@ -48,15 +44,20 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines = [f"{em} *Fear & Greed*\n**{d[0]['value']}/100** — {d[0]['value_classification']}\n", t["fng_7days"]]
         for e in d:
             lines.append(f"  {e['timestamp'][:10]} → {e['value']}")
-        kb = [[InlineKeyboardButton(t["back"], callback_data="menu_back")]]
+        kb = [[InlineKeyboardButton(t["refresh"], callback_data="menu_fng")],
+              [InlineKeyboardButton(t["back"], callback_data="menu_back")]]
         await query.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
     elif data == "menu_news":
-        articles = []
-        for src, url in FEEDS:
-            feed = feedparser.parse(url)
-            for entry in feed.entries[:5]:
-                articles.append({"title": entry.title, "url": entry.link, "source": src})
+        articles = news_mod.get_cached(lang)
+        if articles is None and lang == "fa":
+            en_articles = news_mod.get_cached("en") or []
+            if en_articles:
+                translated = await news_mod._translate_titles(en_articles)
+                news_mod.set_fa_cache(translated)
+                articles = translated
+        if not articles:
+            articles = news_mod.get_cached("en") or []
         lines = [t["news_title"]]
         for i, a in enumerate(articles[:5], 1):
             lines.append(f"{i}. [{a['title']}]({a['url']})\n   — {a['source']}")
@@ -139,13 +140,14 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
         else:
             lines = [f"❌ {'خطا در دریافت قیمت' if lang == 'fa' else 'Error fetching prices'}."]
-        kb = [[InlineKeyboardButton(t["back"], callback_data="menu_back")]]
+        kb = [[InlineKeyboardButton(t["refresh"], callback_data="menu_toman")],
+              [InlineKeyboardButton(t["back"], callback_data="menu_back")]]
         await query.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
     elif data == "menu_back":
         keyboard = [
             [InlineKeyboardButton(t["price"], callback_data="menu_price"), InlineKeyboardButton(t["fng"], callback_data="menu_fng")],
-            [InlineKeyboardButton("💱 Toman" if lang == "en" else "💱 تومان", callback_data="menu_toman"), InlineKeyboardButton(t["news"], callback_data="menu_news")],
+            [InlineKeyboardButton("💱 USD", callback_data="menu_toman"), InlineKeyboardButton(t["news"], callback_data="menu_news")],
             [InlineKeyboardButton(t["whale"], callback_data="menu_whale"), InlineKeyboardButton(t["gas"], callback_data="menu_gas")],
             [InlineKeyboardButton(t["wallet"], callback_data="menu_wallet"), InlineKeyboardButton(t["ai"], callback_data="menu_ai")],
         ]
