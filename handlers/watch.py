@@ -236,9 +236,16 @@ def format_tx(tx, address, chain_label):
 
 def check_new_txs():
     if not ETHERSCAN_KEY and not BLOCKSCOUT_KEY:
+        logger.warning("check_new_txs: no API keys set")
         return {}
 
     data = _load_json(WATCH_FILE)
+    if not data:
+        logger.info("check_new_txs: no wallets in file")
+        return {}
+
+    total_wallets = sum(len(v) for v in data.values())
+    logger.info(f"check_new_txs: {total_wallets} wallet(s) for {len(data)} user(s)")
     blocks = _load_json(LAST_BLOCK_FILE)
     out = {}
 
@@ -249,12 +256,13 @@ def check_new_txs():
             cn = entry["chain"]
             ci = CHAINS.get(cn)
             if not ci:
+                logger.warning(f"check_new_txs: unknown chain {cn} for {addr[:10]}")
                 continue
             cl = ci["label"]
 
             txs = _fetch(addr, cn)
             if not txs:
-                logger.info(f"check {addr[:10]}@{cn}: no txs")
+                logger.info(f"check {addr[:10]}@{cn}: no txs returned (API error or empty)")
                 continue
 
             # collect unique hashes, find max block
@@ -272,10 +280,12 @@ def check_new_txs():
                 new_txs.append(tx)
 
             if not latest_block:
+                logger.info(f"check {addr[:10]}@{cn}: no block number in txs")
                 continue
 
             base_k = _key(entry)
             prev_block = blocks.get(base_k, 0)
+            logger.info(f"check {addr[:10]}@{cn}: prev_block={prev_block}, latest_block={latest_block}")
 
             if prev_block == 0:
                 # first run — just remember the block
@@ -284,6 +294,7 @@ def check_new_txs():
                 continue
 
             if latest_block <= prev_block:
+                logger.info(f"check {addr[:10]}@{cn}: no new blocks")
                 continue
 
             # find txs with block > prev_block (up to 3)
@@ -302,6 +313,8 @@ def check_new_txs():
                 for tx in fresh:
                     out[uid_str].append(format_tx(tx, addr, cl))
                 logger.info(f"check {addr[:10]}@{cn}: {len(fresh)} new tx(s) (block {prev_block}→{latest_block})")
+            else:
+                logger.info(f"check {addr[:10]}@{cn}: latest_block>{prev_block} but no fresh tx after filter")
 
     _save_json(LAST_BLOCK_FILE, blocks)
     return out
