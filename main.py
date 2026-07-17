@@ -56,9 +56,10 @@ async def check_wallets(context: ContextTypes.DEFAULT_TYPE):
             tx_hash = tx.get("hash", "?")
             tx_short = tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash
 
+            chain_tag = f" [{tx.get('chain_label', '')}]"
             if tx["is_token"]:
                 text = (
-                    f"🔔 *{'تراکنش توکن' if lang_code == 'fa' else 'Token Transaction'}*\n\n"
+                    f"🔔 *{'تراکنش توکن' if lang_code == 'fa' else 'Token Transaction'}*{chain_tag}\n\n"
                     f"💱 {tx['value_label']}\n"
                     f"📤 {from_short}\n"
                     f"📥 {to_short}\n"
@@ -69,6 +70,7 @@ async def check_wallets(context: ContextTypes.DEFAULT_TYPE):
             else:
                 usd_value = float(tx.get("usd_value", 0) or 0) * _get_eth_price()
                 text = t["watch_notification"].format(tx_short, tx["value_label"], usd_value, from_short, to_short, tx_hash)
+                text = f"🔔 *New Tx*{chain_tag}\n\n" + text[text.index("📋"):]
 
             try:
                 await context.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown", disable_web_page_preview=True)
