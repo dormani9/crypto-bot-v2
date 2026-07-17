@@ -33,15 +33,15 @@ def fetch_toman_price() -> Tuple[Optional[int], Optional[int], Optional[str]]:
     # First try Iranian exchange APIs
     iranian_sources = [
         {
+            "name": "Wallex",
+            "url": "https://api.wallex.ir/v1/markets",
+            "parse": lambda d: int(float(d["result"]["symbols"]["USDTTMN"]["stats"]["lastPrice"])),
+        },
+        {
             "name": "Nobitex",
             "url": "https://api.nobitex.ir/market/stats",
             "params": {"srcCurrency": "usdt"},
             "parse": lambda d: int(d["stats"]["usdt"]["latest"]),
-        },
-        {
-            "name": "Wallex",
-            "url": "https://api.wallex.ir/v1/markets",
-            "parse": lambda d: int(float([m for m in d["result"] if m["symbol"] == "USDTIRT"][0]["price"])),
         },
     ]
 
