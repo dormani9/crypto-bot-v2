@@ -1,32 +1,16 @@
-import json
-import os
-from pathlib import Path
-
-DATA_FILE = Path(__file__).parent / "user_langs.json"
-
-
-def _load():
-    if DATA_FILE.exists():
-        return json.loads(DATA_FILE.read_text())
-    return {}
-
-
-def _save(data):
-    DATA_FILE.write_text(json.dumps(data))
+_user_langs: dict[str, str] = {}
 
 
 def get_lang(user_id: int) -> str:
-    return _load().get(str(user_id), "en")
+    return _user_langs.get(str(user_id), "en")
 
 
 def set_lang(user_id: int, lang: str):
-    data = _load()
-    data[str(user_id)] = lang
-    _save(data)
+    _user_langs[str(user_id)] = lang
 
 
 FA = {
-    "menu_title": "🚀 *ربات ارز دیجیتال v2*\n\nیک همراه همه‌کاره برای ارزهای دیجیتال.\nاز منوی زیر استفاده کن یا /help را بزن.\n\n✨ *جدید:* دستیار هوش مصنوعی رایگان!",
+    "menu_title": "🚀 *ربات ارز دیجیتال v2*\n\nهمه‌کاره ارزهای دیجیتال.\nاز منوی زیر استفاده کن یا /help را بزن.\n\n✨ *جدید:* دستیار هوش مصنوعی رایگان!",
     "price": "💰 قیمت",
     "fng": "😱 ترس و طمع",
     "news": "📰 اخبار",
@@ -91,7 +75,7 @@ FA = {
     "whale_scanning": "🐋 در حال جستجو...",
     "gas_fetching": "⛽ در حال دریافت...",
     "lang_set": "🌐 زبان به فارسی تغییر کرد.",
-    "lang_en": "🌐 Language set to English.",
+    "lang_en": "🌐 زبان انگلیسی شد.",
 }
 
 EN = {

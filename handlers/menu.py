@@ -6,8 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, ContextTypes, filters
 
 from lang import EN, FA, get_lang
-from handlers.toman import fetch_price as fetch_toman
-from utils import fetch_prices
+from utils import fetch_prices, fetch_toman_price
 
 FEEDS = [
     ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
@@ -121,7 +120,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text, parse_mode="Markdown")
 
     elif data == "menu_toman":
-        usdt_t, dollar_t, src = fetch_toman()
+        usdt_t, dollar_t, src = fetch_toman_price()
         if usdt_t:
             lines = [
                 f"💱 *{'قیمت‌های لحظه‌ای بازار ایران' if lang == 'fa' else 'Iran Market Rates'}*\n",

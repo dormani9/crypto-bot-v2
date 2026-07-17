@@ -1,8 +1,12 @@
+import os
+
 import requests
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
 from lang import EN, FA, get_lang
+
+ETHERSCAN_KEY = os.getenv("ETHERSCAN_API_KEY")
 
 
 async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -19,19 +23,27 @@ async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         eth_price = eth_resp.json().get("ethereum", {}).get("usd", "?")
 
-        gas_resp = requests.get("https://ethgasstation.info/api/ethgasAPI.json", timeout=10)
-        gas_resp.raise_for_status()
-        data = gas_resp.json()
-        safe = data.get("safeLow", 10) / 10
-        normal = data.get("average", 20) / 10
-        fast = data.get("fast", 30) / 10
+        if ETHERSCAN_KEY:
+            params = {
+                "module": "gastracker",
+                "action": "gasoracle",
+                "apikey": ETHERSCAN_KEY,
+            }
+            gas_resp = requests.get("https://api.etherscan.io/api", params=params, timeout=10)
+            data = gas_resp.json().get("result", {})
+            safe = data.get("SafeGasPrice", "?")
+            normal = data.get("ProposeGasPrice", "?")
+            fast = data.get("FastGasPrice", "?")
+        else:
+            safe = normal = fast = "?"
 
         await msg.edit_text(
             f"{t['gas_title']}"
-            f"{t['gas_safe']} `{safe:.1f}` Gwei\n"
-            f"{t['gas_normal']} `{normal:.1f}` Gwei\n"
-            f"{t['gas_fast']} `{fast:.1f}` Gwei\n\n"
-            f"ETH: `${eth_price}`",
+            f"{t['gas_safe']} `{safe}` Gwei\n"
+            f"{t['gas_normal']} `{normal}` Gwei\n"
+            f"{t['gas_fast']} `{fast}` Gwei\n\n"
+            f"ETH: `${eth_price}`"
+            + ("" if ETHERSCAN_KEY else "\n\n⚠️ Set ETHERSCAN_API_KEY for live gas data"),
             parse_mode="Markdown",
         )
     except Exception as e:

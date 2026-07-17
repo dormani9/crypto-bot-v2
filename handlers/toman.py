@@ -1,43 +1,8 @@
-from typing import Optional, Tuple
-
-import requests
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
 from lang import EN, FA, get_lang
-
-SOURCES = [
-    {
-        "name": "Nobitex",
-        "url": "https://api.nobitex.ir/market/stats",
-        "params": {"srcCurrency": "usdt"},
-        "parse": lambda d: int(d["stats"]["usdt"]["latest"]),
-    },
-    {
-        "name": "Wallex",
-        "url": "https://api.wallex.ir/v1/markets",
-        "parse": lambda d: int(float([m for m in d["result"] if m["symbol"] == "USDTIRT"][0]["price"])),
-    },
-    {
-        "name": "Bit24",
-        "url": "https://api.bit24.ir/api/v1/markets",
-        "parse": lambda d: int(float([m for m in d if m["symbol"] == "USDTIRT"][0]["stats"]["last"])),
-    },
-]
-
-
-def fetch_price() -> Tuple[Optional[int], Optional[int], Optional[str]]:
-    for src in SOURCES:
-        try:
-            params = src.get("params", {})
-            res = requests.get(src["url"], params=params, timeout=8)
-            res.raise_for_status()
-            data = res.json()
-            usdt_price = src["parse"](data)
-            return usdt_price, usdt_price, src["name"]
-        except Exception:
-            continue
-    return None, None, None
+from utils import fetch_toman_price
 
 
 async def toman(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -48,7 +13,7 @@ async def toman(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💱 در حال دریافت قیمت‌ها..." if t == FA else "💱 Fetching prices..."
     )
 
-    usdt_toman, dollar_toman, source = fetch_price()
+    usdt_toman, dollar_toman, source = fetch_toman_price()
 
     if not usdt_toman:
         await msg.edit_text("خطا در دریافت قیمت از تمام منابع." if t == FA else "All sources failed.")
