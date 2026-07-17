@@ -266,7 +266,7 @@ PR و Issue خوش اومد. قبل از فرستادن PR:
   </a>
 </p>
 
-تشکر ویژه از **میثاق** بابت همکاری و کمک‌هاش تو این پروژه.
+Special thanks to **Misagh** for his collaboration and support on this project.
 
 ---
 
