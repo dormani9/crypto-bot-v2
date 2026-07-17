@@ -15,14 +15,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(t["fng"], callback_data="menu_fng"),
         ],
         [
+            InlineKeyboardButton("💱 Toman" if lang == "en" else "💱 تومان", callback_data="menu_toman"),
             InlineKeyboardButton(t["news"], callback_data="menu_news"),
+        ],
+        [
             InlineKeyboardButton(t["whale"], callback_data="menu_whale"),
-        ],
-        [
             InlineKeyboardButton(t["gas"], callback_data="menu_gas"),
-            InlineKeyboardButton(t["portfolio"], callback_data="menu_portfolio"),
         ],
         [
+            InlineKeyboardButton(t["portfolio"], callback_data="menu_portfolio"),
             InlineKeyboardButton(t["ai"], callback_data="menu_ai"),
         ],
     ]
@@ -46,6 +47,8 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += t["help_gas"]
     text += t["help_portfolio"]
     text += t["help_ask"]
+
+    text += "\n💱 `/toman` — قیمت دلار و تتر به تومان"
 
     if lang == "fa":
         text += "\n🌐 `/lang` — تغییر زبان"

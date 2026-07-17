@@ -6,6 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, ContextTypes, filters
 
 from lang import EN, FA, get_lang
+from handlers.toman import fetch_price as fetch_toman
 from utils import fetch_prices
 
 FEEDS = [
@@ -119,12 +120,26 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = t["ai_title"] + t["ai_desc"] + t["ai_usage"]
         await query.edit_message_text(text, parse_mode="Markdown")
 
+    elif data == "menu_toman":
+        usdt_t, dollar_t, src = fetch_toman()
+        if usdt_t:
+            lines = [
+                f"💱 *{'قیمت‌های لحظه‌ای بازار ایران' if lang == 'fa' else 'Iran Market Rates'}*\n",
+                f"💵 *1 USDT* = `{usdt_t:,}` {'تومان' if lang == 'fa' else 'Toman'}",
+                f"🇺🇸 *1 USD* ≈ `{dollar_t:,}` {'تومان' if lang == 'fa' else 'Toman'}",
+                f"📡 {src}",
+            ]
+        else:
+            lines = [f"❌ {'خطا در دریافت قیمت' if lang == 'fa' else 'Error fetching prices'}."]
+        kb = [[InlineKeyboardButton(t["back"], callback_data="menu_back")]]
+        await query.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+
     elif data == "menu_back":
         keyboard = [
             [InlineKeyboardButton(t["price"], callback_data="menu_price"), InlineKeyboardButton(t["fng"], callback_data="menu_fng")],
-            [InlineKeyboardButton(t["news"], callback_data="menu_news"), InlineKeyboardButton(t["whale"], callback_data="menu_whale")],
-            [InlineKeyboardButton(t["gas"], callback_data="menu_gas"), InlineKeyboardButton(t["portfolio"], callback_data="menu_portfolio")],
-            [InlineKeyboardButton(t["ai"], callback_data="menu_ai")],
+            [InlineKeyboardButton("💱 Toman" if lang == "en" else "💱 تومان", callback_data="menu_toman"), InlineKeyboardButton(t["news"], callback_data="menu_news")],
+            [InlineKeyboardButton(t["whale"], callback_data="menu_whale"), InlineKeyboardButton(t["gas"], callback_data="menu_gas")],
+            [InlineKeyboardButton(t["portfolio"], callback_data="menu_portfolio"), InlineKeyboardButton(t["ai"], callback_data="menu_ai")],
         ]
         await query.edit_message_text(t["menu_title"], parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
 
