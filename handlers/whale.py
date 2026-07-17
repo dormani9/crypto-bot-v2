@@ -37,11 +37,15 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "startblock": 0,
             "endblock": 99999999,
             "sort": "desc",
+            "page": 1,
+            "offset": 10,
             "apikey": ETHERSCAN_KEY,
         }
-        res = requests.get(ETHERSCAN_V2, params=params, timeout=10)
+        res = requests.get(ETHERSCAN_V2, params=params, timeout=15)
         res.raise_for_status()
         result = res.json().get("result", [])
+        if not isinstance(result, list):
+            result = []
     except Exception as e:
         await msg.edit_text(f"{t['ai_error']} {e}")
         return
@@ -51,14 +55,21 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for tx in result:
         if count >= 5:
             break
-        value_eth = int(tx["value"]) / 1e18
+        try:
+            value_eth = int(tx.get("value", 0)) / 1e18
+        except (ValueError, TypeError):
+            continue
         if value_eth * eth_price < WHALE_THRESHOLD:
             continue
+        from_addr = tx.get("from", "?")[:6] + "..." + tx.get("from", "?")[-4:]
+        to_addr = tx.get("to", "")[:6] + "..." + tx.get("to", "")[-4:] if tx.get("to") else "N/A"
+        tx_hash = tx.get("hash", "?")
+        tx_short = tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash
         lines.append(
             f"🔹 *${value_eth * eth_price:,.0f}* ({value_eth:,.2f} ETH)\n"
-            f"   From `{tx['from'][:6]}...{tx['from'][-4:]}`\n"
-            f"   To `{tx['to'][:6]}...{tx['to'][-4:] if tx['to'] else 'N/A'}`\n"
-            f"   [`{tx['hash'][:10]}...{tx['hash'][-6:]}`](https://etherscan.io/tx/{tx['hash']})\n"
+            f"   From `{from_addr}`\n"
+            f"   To `{to_addr}`\n"
+            f"   [`{tx_short}`](https://etherscan.io/tx/{tx_hash})\n"
         )
         count += 1
 

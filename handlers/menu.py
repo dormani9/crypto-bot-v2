@@ -76,12 +76,14 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             eth_r = requests.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "ethereum", "vs_currencies": "usd"}, timeout=10)
             eth_p = eth_r.json().get("ethereum", {}).get("usd", 0)
-            r = requests.get("https://api.etherscan.io/api", params={
-                "module": "account", "action": "txlist",
+            r = requests.get("https://api.etherscan.io/v2/api", params={
+                "chainid": 1, "module": "account", "action": "txlist",
                 "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-                "startblock": 0, "endblock": 99999999, "sort": "desc", "apikey": key,
+                "startblock": 0, "endblock": 99999999, "sort": "desc",
+                "page": 1, "offset": 10, "apikey": key,
             }, timeout=10)
-            txs = r.json().get("result", [])
+            result = r.json().get("result", [])
+            txs = result if isinstance(result, list) else []
         except Exception as e:
             await query.edit_message_text(f"{t['ai_error']} {e}")
             return
@@ -90,10 +92,13 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c = 0
         for tx in txs:
             if c >= 5: break
-            v = int(tx["value"]) / 1e18
-            if v * eth_p < 1_000_000: continue
-            lines.append(f"🔹 *${v * eth_p:,.0f}* ({v:,.2f} ETH)\n   `{tx['from'][:6]}...{tx['from'][-4:]}` → `{tx['to'][:6]}...{tx['to'][-4:]}`")
-            c += 1
+            try:
+                v = int(tx.get("value", 0)) / 1e18
+                if v * eth_p < 1_000_000: continue
+                lines.append(f"🔹 *${v * eth_p:,.0f}* ({v:,.2f} ETH)\n   `{tx['from'][:6]}...{tx['from'][-4:]}` → `{tx['to'][:6]}...{tx['to'][-4:]}`")
+                c += 1
+            except Exception:
+                continue
         if c == 0: lines.append(t["whale_none"])
         kb = [[InlineKeyboardButton(t["refresh"], callback_data="menu_whale")], [InlineKeyboardButton(t["back"], callback_data="menu_back")]]
         await query.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
@@ -102,10 +107,14 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             er = requests.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "ethereum", "vs_currencies": "usd"}, timeout=10)
             ep = er.json().get("ethereum", {}).get("usd", "?")
-            gr = requests.get("https://ethgasstation.info/api/ethgasAPI.json", timeout=10)
-            gd = gr.json()
-            s, n, f = gd.get("safeLow", 10) / 10, gd.get("average", 20) / 10, gd.get("fast", 30) / 10
-            text = f"{t['gas_title']}{t['gas_safe']} `{s:.1f}` Gwei\n{t['gas_normal']} `{n:.1f}` Gwei\n{t['gas_fast']} `{f:.1f}` Gwei\n\nETH: `${ep}`"
+            gk = os.getenv("ETHERSCAN_API_KEY")
+            s = n = f = "?"
+            if gk:
+                gr = requests.get("https://api.etherscan.io/v2/api", params={"chainid": 1, "module": "gastracker", "action": "gasoracle", "apikey": gk}, timeout=10)
+                gd = gr.json().get("result")
+                if isinstance(gd, dict):
+                    s, n, f = gd.get("SafeGasPrice", "?"), gd.get("ProposeGasPrice", "?"), gd.get("FastGasPrice", "?")
+            text = f"{t['gas_title']}{t['gas_safe']} `{s}` Gwei\n{t['gas_normal']} `{n}` Gwei\n{t['gas_fast']} `{f}` Gwei\n\nETH: `${ep}`"
         except Exception as e:
             text = f"{t['ai_error']} {e}"
         kb = [[InlineKeyboardButton(t["refresh"], callback_data="menu_gas")], [InlineKeyboardButton(t["back"], callback_data="menu_back")]]
