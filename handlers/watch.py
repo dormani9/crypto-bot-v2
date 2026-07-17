@@ -209,9 +209,12 @@ def _fetch(address, chain_name):
             if key:
                 params["apikey"] = key
             r = requests.get(base, params=params, timeout=12)
-            items = r.json().get("result", [])
+            data = r.json()
+            items = data.get("result", [])
             if isinstance(items, list):
                 out.extend(items)
+            else:
+                logger.info(f"_fetch {chain_name}/{action}: msg={data.get('message','?')} result={str(items)[:200]}")
         except Exception as e:
             logger.warning(f"_fetch {chain_name}/{action} {address[:10]}: {e}")
     return out
