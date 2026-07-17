@@ -1,258 +1,276 @@
-# 🤖 Crypto V2 Bot — راهنمای کامل ربات تلگرام ارز دیجیتال
+# 🤖 Crypto V2 Bot — Multi-Language Telegram Crypto Assistant
+
+<p align="center">
+  <img src="assets/header.png" alt="Crypto Bot v2" width="600"/>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python" />
   <img src="https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram" />
+  <img src="https://img.shields.io/badge/API-Covalent-ff69b4" />
   <img src="https://img.shields.io/badge/API-CoinGecko-green?logo=bitcoin" />
   <img src="https://img.shields.io/badge/deploy-Railway-purple?logo=railway" />
 </p>
 
-یک ربات تلگرام جامع و دوزبانه (فارسی/انگلیسی) برای دنیای کریپتو. قیمت لحظه‌ای، شاخص ترس و طمع، اخبار، تراکنش‌های نهنگ‌ها، کارمزد گاز اتریوم، پورتفوی شخصی، قیمت تومان، و دستیار هوش مصنوعی — همه در یک ربات.
+A comprehensive bilingual (Persian/English) Telegram bot for the crypto world. Live prices, Fear & Greed index, news, whale transactions, Ethereum gas fees, wallet monitoring across 23 EVM chains, USD/Toman rates, and an AI assistant — all in one bot.
 
 ---
 
-## 📋 فهرست
+## 📋 Table of Contents
 
-- [امکانات](#-امکانات)
-- [راهنمای دستورات](#-راهنمای-دستورات)
-- [نصب و اجرا](#-نصب-و-اجرا)
-- [متغیرهای محیطی](#-متغیرهای-محیطی)
-- [ساختار پروژه](#-ساختار-پروژه)
-- [API‌های استفاده شده](#-apiهای-استفاده-شده)
-- [استقرار روی Railway](#-استقرار-روی-railway)
-- [مجوز](#-مجوز)
-
----
-
-## ✨ امکانات
-
-### 🔸 قیمت لحظه‌ای ارزها
-نمایش قیمت ۲۸+ ارز برتر با تغییرات ۲۴ ساعته (🟢 مثبت / 🔴 منفی). از alias پشتیبانی می‌کند: `btc` → `bitcoin`، `eth` → `ethereum`، `sol` → `solana`، `ofc` → `onefootball-club` و بیش از ۵۰ توکن دیگر.
-
-### 🔸 شاخص ترس و طمع (Fear & Greed)
-شاخص احساسات بازار در ۷ روز اخیر با ایموجی: 😱 ترس شدید → 🤑 طمع شدید.
-
-### 🔸 اخبار کریپتو
-- `/news` — آخرین اخبار از CoinDesk + CoinTelegraph (انگلیسی)
-- `/fnews` — آخرین اخبار از ارزدیجیتال (فارسی)
-
-### 🔸 تراکنش‌های نهنگ
-ردیابی تراکنش‌های بالای ۱ میلیون دلار در شبکه اتریوم با استفاده از Etherscan API.
-
-### 🔸 کارمزد گاز اتریوم
-نمایش `Safe`، `Normal` و `Fast` گس به همراه قیمت لحظه‌ای ETH.
-
-### 🔸 پورتفوی شخصی
-افزودن، حذف و مشاهده پورتفوی شخصی. قیمت‌ها به‌روز و مجموع ارزش به دلار محاسبه می‌شود.
-
-### 🔸 قیمت تومان
-دریافت قیمت لحظه‌ای USDT و USD به تومان از صرافی‌های ایرانی. والکس منبع اصلی، با فالبک نرخ ارز.
-
-### 🔸 منوی تعاملی
-همه قابلیت‌ها از طریق دکمه‌های شیشه‌ای در دسترس است. دکمه refresh برای به‌روزرسانی.
-
-### 🔸 دستیار هوش مصنوعی
-- `/ask <سوال>` یا ارسال مستقیم متن (free-form)
-- پاسخ‌های دقیق و تخصصی در مورد بلاکچین، دیفای، تحلیل بازار و...
-- فارسی/انگلیسی — بر اساس زبان انتخاب شده
-- قدرت گرفته از `gpt-5.4-mini` از طریق freemodel.dev
-
-### 🔸 دوزبانه
-پشتیبانی کامل از فارسی و انگلیسی. انتخاب زبان در اولین `/start` با امکان تغییر با `/lang`.
+- [Features](#-features)
+- [Commands](#-commands)
+- [Wallet Monitoring](#-wallet-monitoring)
+- [Installation](#-installation)
+- [Environment Variables](#-environment-variables)
+- [Project Structure](#-project-structure)
+- [APIs Used](#-apis-used)
+- [Railway Deployment](#-railway-deployment)
+- [License](#-license)
 
 ---
 
-## 📖 راهنمای دستورات
+## ✨ Features
 
-| دستور | توضیح | مثال |
-|-------|-------|------|
-| `/start` | شروع ربات و انتخاب زبان | `/start` |
-| `/price [coin...]` | قیمت لحظه‌ای یک یا چند ارز | `/price btc eth sol ofc` |
-| `/alert <coin> <above/below> <price>` | هشدار قیمت | `/alert btc above 100000` |
-| `/fng [days]` | شاخص ترس و طمع | `/fng` |
-| `/news [count]` | اخبار انگلیسی | `/news 3` |
-| `/fnews [count]` | اخبار فارسی | `/fnews 3` |
-| `/whale` | تراکنش‌های نهنگ | `/whale` |
-| `/gas` | کارمزد گاز اتریوم | `/gas` |
-| `/portfolio` | مشاهده پورتفوی | `/portfolio` |
-| `/add <coin> <amount>` | افزودن به پورتفوی | `/add bitcoin 0.5` |
-| `/remove <coin>` | حذف از پورتفوی | `/remove bitcoin` |
-| `/toman` | قیمت USDT و USD به تومان | `/toman` |
-| `/ask <question>` | سوال از هوش مصنوعی | `/ask what is DeFi?` |
-| حالا هر متنی بفرستی (غیر از دستور) هم جواب می‌گیری | — | `اتریوم چیه؟` |
-| `/help` | راهنما | `/help` |
-| `/lang` | تغییر زبان | `/lang` |
+### 🔸 Live Crypto Prices
+Display prices for 28+ top coins with 24h change indicators (🟢 up / 🔴 down). Supports aliases: `btc` → `bitcoin`, `eth` → `ethereum`, `sol` → `solana`, `ofc` → `onefootball-club` and 50+ other tokens.
 
-### کوین‌های پشتیبانی شده در /price (پیش‌فرض ۲۸ عدد)
-```
-bitcoin, ethereum, solana, ripple, cardano,
-dogecoin, polkadot, chainlink, avalanche-2, matic-network,
-tron, litecoin, shiba-inu, the-open-network,
-binancecoin, aptos, arbitrum, optimism,
-vechain, near, injective, sei-network,
-starknet, worldcoin-wld, pepe, bonk,
-onefootball-club, dogwifhat
-```
+### 🔸 Fear & Greed Index
+Market sentiment over the last 7 days with emojis: 😱 Extreme Fear → 🤑 Extreme Greed.
 
-### Aliasهای موجود (بیش از ۵۰ عدد)
-```
-btc→bitcoin, eth→ethereum, sol→solana, xrp→ripple,
-ada→cardano, dot→polkadot, ltc→litecoin, link→chainlink,
-matic→matic-network, avax→avalanche-2, bnb→binancecoin,
-doge→dogecoin, trx→tron, atom→cosmos, uni→uniswap,
-aave→aave, cro→crypto-com-chain, vet→vechain,
-theta→theta-token, fil→filecoin, icp→internet-computer,
-near→near, apt→aptos, sui→sui, arb→arbitrum,
-op→optimism, inj→injective, ldo→lido-dao,
-rune→thorchain, ftm→fantom, cake→pancakeswap,
-ofc→onefootball-club, shib→shiba-inu, ton→the-open-network,
-tia→celestia, sei→sei-network, stx→blockstack,
-egld→elrond-erd-2, algo→algorand, frtn→forta,
-pendle→pendle, ondo→ondo-finance, jto→jito-governance-token,
-io→io-net, strk→starknet, wld→worldcoin-wld,
-pepe→pepe, floki→floki, bonk→bonk,
-wif→dogwifhat, meme→memecoin
-```
+### 🔸 Crypto News
+- Cached English news from CoinDesk + CoinTelegraph (refreshed hourly)
+- Persian users get AI-translated headlines automatically
+
+### 🔸 Whale Transactions
+Track transactions over $1M on Ethereum via Etherscan API.
+
+### 🔸 Ethereum Gas Fees
+Display Safe, Normal, and Fast gas prices with live ETH price.
+
+### 🔸 Wallet Monitoring (23 EVM Chains)
+Monitor any wallet across 23 EVM-compatible chains. Get instant Telegram notifications on new transactions.
+
+**Supported chains:** Ethereum, BSC, Polygon, Arbitrum, Optimism, Base, Avalanche, Cronos, Fantom, Gnosis, zkSync Era, Linea, Scroll, Blast, Mantle, Moonbeam, Celo, Polygon zkEVM, Aurora, Metis, HyperEVM, Unichain, Robinhood Chain
+
+### 🔸 USD/Toman Rate
+Live USDT and USD to Iranian Toman rates from Wallex exchange.
+
+### 🔸 Interactive Menu
+All features accessible through inline buttons with refresh support for live data.
+
+### 🔸 AI Assistant
+- `/ask <question>` or send any text message (free-form)
+- Expert responses on blockchain, DeFi, market analysis
+- Persian/English — follows your selected language
+- Powered by `gpt-5.4-mini` via freemodel.dev
+
+### 🔸 Bilingual Interface
+Full Persian and English support. Language selection on first `/start`, change anytime with `/lang`.
 
 ---
 
-## 🛠 نصب و اجرا
+## 📖 Commands
 
-### پیش‌نیازها
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/start` | Start the bot & select language | `/start` |
+| `/help` | Show help | `/help` |
+| `/price [coin...]` | Live prices for one or more coins | `/price btc eth sol` |
+| `/fng` | Fear & Greed index | `/fng` |
+| `/news` | Latest crypto news | `/news` |
+| `/whale` | Whale transactions | `/whale` |
+| `/gas` | Ethereum gas fees | `/gas` |
+| `/toman` | USD/Toman rate | `/toman` |
+| `/ask <question>` | Ask the AI assistant | `/ask what is DeFi?` |
+| `/watch <address> [chain]` | Start monitoring a wallet | `/watch 0x... eth` |
+| `/unwatch <address> [chain]` | Stop monitoring | `/unwatch 0x...` |
+| `/wallets` | List all watched wallets | `/wallets` |
+| `/check` | Force a manual wallet scan | `/check` |
+| `/lang` | Change language | `/lang` |
+
+Any non-command text also triggers the AI assistant automatically.
+
+---
+
+## 👁 Wallet Monitoring
+
+Monitor any EVM wallet across 23 chains with real-time Telegram notifications.
+
+```
+/watch 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18     → monitors on ALL 23 chains
+/watch 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18 bsc → monitors only on BSC
+/wallets                                                 → list your watched wallets
+/unwatch 0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18     → remove from watchlist
+/check                                                   → force scan right now
+```
+
+**How it works:** The bot checks all watched wallets every 15 seconds via the Covalent API. When a new transaction is detected (incoming or outgoing, native or token), you receive an instant notification with:
+
+- 🔔 Transaction type (Native / Token)
+- 💱 Amount and symbol
+- 📤 Sender address
+- 📥 Recipient address
+- 🔗 Link to block explorer
+
+No polling delays — background job queue handles everything automatically.
+
+---
+
+## 🛠 Installation
+
+### Prerequisites
 - Python 3.10+
 - pip
-- (اختیاری) API Keyهای رایگان از منابع زیر
+- (Optional) Free API keys from the sources below
 
-### مراحل نصب
+### Setup
 
 ```bash
-# 1. کلون کردن مخزن
+# 1. Clone the repository
 git clone https://github.com/dormani9/crypto-bot-v2.git
 cd crypto-bot-v2
 
-# 2. ایجاد محیط مجازی (توصیه می‌شود)
+# 2. Create virtual environment (recommended)
 python -m venv venv
-# ویندوز:
+# Windows:
 venv\Scripts\activate
-# لینوکس/مک:
+# Linux/Mac:
 source venv/bin/activate
 
-# 3. نصب وابستگی‌ها
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. ایجاد فایل .env
-copy .env.example .env   # ویندوز
-cp .env.example .env     # لینوکس/مک
+# 4. Create .env file
+copy .env.example .env   # Windows
+cp .env.example .env     # Linux/Mac
 
-# 5. ویرایش .env — توکن ربات و API Keyها را وارد کنید
+# 5. Edit .env — add your bot token and API keys
 
-# 6. اجرا
+# 6. Run
 python main.py
 ```
 
 ---
 
-## 🔐 متغیرهای محیطی
+## 🔐 Environment Variables
 
-| متغیر | الزامی | توضیح | دریافت از |
-|-------|--------|-------|-----------|
-| `TELEGRAM_BOT_TOKEN` | ✅ بله | توکن ربات تلگرام | [BotFather](https://t.me/BotFather) |
-| `COINGECKO_API_KEY` | ❌ اختیاری | کلید API کوین‌گکو (نرخ بیشتر) | [CoinGecko](https://www.coingecko.com/en/api) |
-| `FREEMODEL_API_KEY` | ❌ اختیاری | کلید هوش مصنوعی (رایگان) | [freemodel.dev](https://freemodel.dev) |
-| `ETHERSCAN_API_KEY` | ❌ اختیاری | کلید API اتراسکن (گاز و نهنگ) | [Etherscan](https://etherscan.io/myapikey) |
+| Variable | Required | Description | Get it from |
+|----------|----------|-------------|-------------|
+| `TELEGRAM_BOT_TOKEN` | ✅ Yes | Telegram bot token | [BotFather](https://t.me/BotFather) |
+| `COVALENT_API_KEY` | ✅ For wallet monitoring | Covalent unified API key | [Covalent](https://www.covalenthq.com/) |
+| `COINGECKO_API_KEY` | ❌ Optional | Higher rate limit for prices | [CoinGecko](https://www.coingecko.com/en/api) |
+| `FREEMODEL_API_KEY` | ❌ Optional | AI assistant (free) | [freemodel.dev](https://freemodel.dev) |
+| `ETHERSCAN_API_KEY` | ❌ Optional | Gas & whale tracking | [Etherscan](https://etherscan.io/myapikey) |
+| `BLOCKSCOUT_API_KEY` | ❌ Optional | Blockscout Pro (Robinhood Chain) | [Blockscout](https://blockscout.com) |
 
-> بدون `FREEMODEL_API_KEY`، دستیار AI کار نمی‌کند. بقیه ویژگی‌ها بدون API Key هم کار می‌کنند.
+> Without `COVALENT_API_KEY`, wallet monitoring won't work. Without `FREEMODEL_API_KEY`, the AI assistant won't work. Other features work without API keys.
 
 ---
 
-## 📁 ساختار پروژه
+## 📁 Project Structure
 
 ```
 crypto-bot-v2/
-├── main.py                  # نقطه ورود — ثبت handlerها و اجرای ربات
-├── utils.py                 # توابع کمکی: قیمت‌گیری از CoinGecko، قیمت تومان، COIN_ALIASES
-├── lang.py                  # دیکشنری دوزبانه فارسی/انگلیسی + مدیریت زبان کاربران
-├── requirements.txt         # وابستگی‌های پروژه
-├── .env.example             # نمونه فایل محیطی
-├── portfolio.json           # ذخیره پورتفوی کاربران (ساخته می‌شود)
-├── README.md                # همین فایل
+├── main.py                  # Entry point — handler registration & bot startup
+├── utils.py                 # Helpers: CoinGecko prices, Toman rates, COIN_ALIASES
+├── lang.py                  # Bilingual FA/EN dictionary + user language management
+├── requirements.txt         # Project dependencies
+├── .env.example             # Sample environment file
+├── wallet-monitor.json      # Watched wallets (auto-created)
+├── last-block.json          # Last-checked blocks (auto-created)
+├── README.md                # This file
 │
-└── handlers/                # ماژول‌های handler
-    ├── start.py             # /start (انتخاب زبان) + /help + /lang + منوی اصلی
+└── handlers/                # Handler modules
+    ├── start.py             # /start (language selection) + /help + /lang + main menu
     ├── price.py             # /price + /alert
-    ├── news.py              # /news (انگلیسی) + /fnews (فارسی)
-    ├── fng.py               # /fng — شاخص ترس و طمع
-    ├── whale.py             # /whale — تراکنش‌های نهنگ
-    ├── gas.py               # /gas — کارمزد گاز
-    ├── toman.py             # /toman — قیمت تومان
-    ├── portfolio.py         # /portfolio + /add + /remove
-    ├── ai.py                # /ask — دستیار هوش مصنوعی
-    └── menu.py              # منوی تعاملی (callback handler)
+    ├── news.py              # /news — cached CoinDesk + CoinTelegraph, AI-translated for FA
+    ├── fng.py               # /fng — Fear & Greed Index
+    ├── whale.py             # /whale — whale transactions
+    ├── gas.py               # /gas — Ethereum gas fees
+    ├── toman.py             # /toman — USD/Toman rate
+    ├── watch.py             # /watch, /unwatch, /wallets, /check — wallet monitoring (23 chains)
+    ├── ai.py                # /ask — AI assistant via freemodel.dev
+    ├── menu.py              # Interactive inline menu with callbacks
 ```
 
-### جریان کار (Flow)
+### Flow
 
 ```
-کاربر → /start → انتخاب زبان → منوی اصلی
-    ├── 🔹 قیمت (menu_price) ← CoinGecko
-    ├── 🔹 ترس و طمع (menu_fng) ← alternative.me
-    ├── 🔹 تومان (menu_toman) ← Wallex
-    ├── 🔹 اخبار (menu_news) ← RSS feeds
-    ├── 🔹 نهنگ (menu_whale) ← Etherscan
-    ├── 🔹 گاز (menu_gas) ← Etherscan
-    ├── 🔹 پورتفوی (menu_portfolio) ← portfolio.json
-    └── 🔹 هوش مصنوعی (menu_ai) ← freemodel.dev
+User → /start → Language select → Main menu
+    ├── 🔹 Prices (menu_price) ← CoinGecko
+    ├── 🔹 Fear & Greed (menu_fng) ← alternative.me
+    ├── 🔹 USD/Toman (menu_toman) ← Wallex
+    ├── 🔹 News (menu_news) ← RSS feeds + AI translation
+    ├── 🔹 Whale (menu_whale) ← Etherscan
+    ├── 🔹 Gas (menu_gas) ← Etherscan
+    ├── 🔹 Wallet (menu_wallet) ← Covalent API (23 chains)
+    └── 🔹 AI (menu_ai) ← freemodel.dev
 ```
 
 ---
 
-## 🌐 API‌های استفاده شده
+## 🌐 APIs Used
 
-| سرویس | کاربرد | مستندات | لایسنس |
-|-------|--------|---------|--------|
-| **CoinGecko** | قیمت لحظه‌ای ۲۸+ ارز با تغییرات ۲۴ ساعته | [docs](https://docs.coingecko.com) | رایگان با API Key |
-| **Etherscan v2** | گس و تراکنش‌های نهنگ اتریوم | [docs](https://docs.etherscan.io) | رایگان |
-| **alternative.me** | شاخص ترس و طمع بازار | [docs](https://alternative.me/crypto/fear-and-greed-index) | رایگان |
-| **freemodel.dev** | دستیار AI (مدل gpt-5.4-mini) | [freemodel.dev](https://freemodel.dev) | رایگان |
-| **Wallex** | قیمت USDT/Toman | [wallex.ir](https://wallex.ir) | رایگان |
-| **ارزدیجیتال** | اخبار فارسی (RSS) | [arzdigital.com](https://arzdigital.com) | RSS رایگان |
-| **CoinDesk / CoinTelegraph** | اخبار انگلیسی (RSS) | — | RSS رایگان |
+| Service | Usage | Docs | License |
+|---------|-------|------|---------|
+| **Covalent** | Wallet monitoring across 23 EVM chains | [docs](https://www.covalenthq.com/docs/api/) | Free tier (75k req/mo) |
+| **CoinGecko** | Live prices for 28+ coins with 24h change | [docs](https://docs.coingecko.com) | Free with API key |
+| **Etherscan v2** | Gas fees & whale transactions | [docs](https://docs.etherscan.io) | Free tier |
+| **alternative.me** | Fear & Greed market index | [docs](https://alternative.me/crypto/fear-and-greed-index) | Free |
+| **freemodel.dev** | AI assistant (gpt-5.4-mini) | [freemodel.dev](https://freemodel.dev) | Free |
+| **Wallex** | USDT/Toman rate | [wallex.ir](https://wallex.ir) | Free |
+| **CoinDesk / CoinTelegraph** | English news (RSS) | — | RSS free |
 
 ---
 
-## 🚀 استقرار روی Railway
+## 🚀 Railway Deployment
 
-این ربات روی Railway اجرا می‌شود. مراحل:
+This bot runs on Railway. Steps:
 
-1. مخزن را به GitHub پوش کنید
-2. در [Railway](https://railway.app) یک پروژه جدید بسازید و به مخزن GitHub متصل کنید
-3. در تنظیمات Railway، متغیرهای محیطی را اضافه کنید:
+1. Push the repository to GitHub
+2. Create a new project on [Railway](https://railway.app) and connect your GitHub repo
+3. In Railway settings, add environment variables:
    - `TELEGRAM_BOT_TOKEN`
-   - `COINGECKO_API_KEY` (اختیاری)
-   - `FREEMODEL_API_KEY` (اختیاری)
-   - `ETHERSCAN_API_KEY` (اختیاری)
-4. Railway خودکار `pip install -r requirements.txt` و `python main.py` را اجرا می‌کند
-5. پس از هر پوش به GitHub، Railway خودکار دیپلوی می‌کند
+   - `COVALENT_API_KEY`
+   - `COINGECKO_API_KEY` (optional)
+   - `FREEMODEL_API_KEY` (optional)
+   - `ETHERSCAN_API_KEY` (optional)
+   - `BLOCKSCOUT_API_KEY` (optional)
+4. Railway automatically runs `pip install -r requirements.txt` and `python main.py`
+5. Every push to GitHub triggers an automatic redeploy
 
-> نکته: صرافی‌های ایرانی (نوبیتکس، بیت‌۲۴) روی Railway DNS مسدود هستند. والکس تنها منبع کارای قیمت تومان است.
-
----
-
-## 🤝 مشارکت
-
-PR و Issue با استقبال مواجه می‌شود. قبل از ارسال PR:
-- کد را تست کنید
-- از lint بودن اطمینان حاصل کنید
-- Commit messageهای واضح بنویسید
+> Note: Iranian exchanges (Nobitex, Bit24) are DNS-blocked on Railway. Wallex is the only working source for Toman rates.
 
 ---
 
-## 📝 مجوز
+## 🤝 Contributing
 
-این پروژه تحت مجوز MIT منتشر شده است.
+PRs and Issues are welcome. Before submitting a PR:
+- Test your changes
+- Ensure code quality
+- Write clear commit messages
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+---
+
+## 🙏 Special Thanks
+
+<p align="center">
+  <a href="https://github.com/Misagh95/">
+    <img src="assets/thanks-misagh.jpg" alt="Thanks to Misagh" width="300"/>
+  </a>
+</p>
+
+Special thanks to **Misagh** for his invaluable collaboration and support throughout this project.
 
 ---
 
 <p align="center">
-  ساخته شده با ❤️ برای جامعه کریپتو ایران
+  Made with ❤️ for the crypto community
 </p>
