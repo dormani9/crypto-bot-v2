@@ -73,7 +73,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += t["help_fnews"]
     text += t["help_whale"]
     text += t["help_gas"]
-    text += t["help_portfolio"]
+    text += t["help_wallet"]
     text += t["help_ask"]
     text += t["help_watch"]
 

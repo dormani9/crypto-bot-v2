@@ -7,7 +7,7 @@ from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
-from handlers import fng, gas, menu, news, portfolio, price, start, toman, watch, whale
+from handlers import fng, gas, menu, news, price, start, toman, watch, whale
 
 from lang import EN, FA, get_lang
 
@@ -102,7 +102,7 @@ def main():
 
     app = ApplicationBuilder().token(token).build()
 
-    for module in [price, fng, news, whale, gas, portfolio, toman, menu, watch]:
+    for module in [price, fng, news, whale, gas, toman, menu, watch]:
         for handler in module.get_handlers():
             app.add_handler(handler)
 

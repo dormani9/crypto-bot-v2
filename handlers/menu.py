@@ -120,8 +120,8 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb = [[InlineKeyboardButton(t["refresh"], callback_data="menu_gas")], [InlineKeyboardButton(t["back"], callback_data="menu_back")]]
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
 
-    elif data == "menu_portfolio":
-        text = t["portfolio_title"] + t["portfolio_add"] + t["portfolio_remove"] + t["portfolio_view"]
+    elif data == "menu_wallet":
+        text = t["wallet_title"] + t["wallet_add"] + t["wallet_remove"] + t["wallet_list"] + t["wallet_check"]
         await query.edit_message_text(text, parse_mode="Markdown")
 
     elif data == "menu_ai":
@@ -147,7 +147,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(t["price"], callback_data="menu_price"), InlineKeyboardButton(t["fng"], callback_data="menu_fng")],
             [InlineKeyboardButton("💱 Toman" if lang == "en" else "💱 تومان", callback_data="menu_toman"), InlineKeyboardButton(t["news"], callback_data="menu_news")],
             [InlineKeyboardButton(t["whale"], callback_data="menu_whale"), InlineKeyboardButton(t["gas"], callback_data="menu_gas")],
-            [InlineKeyboardButton(t["portfolio"], callback_data="menu_portfolio"), InlineKeyboardButton(t["ai"], callback_data="menu_ai")],
+            [InlineKeyboardButton(t["wallet"], callback_data="menu_wallet"), InlineKeyboardButton(t["ai"], callback_data="menu_ai")],
         ]
         await query.edit_message_text(t["menu_title"], parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
 
