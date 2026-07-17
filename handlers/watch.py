@@ -76,40 +76,46 @@ async def watch(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     address = context.args[0].lower()
-    chain = context.args[1].lower() if len(context.args) > 1 else "eth"
+    raw_chain = context.args[1].lower() if len(context.args) > 1 else None
 
-    if not address.startswith("0x") or len(address) != 42:
-        await update.message.reply_text(t["watch_invalid"], parse_mode="Markdown")
-        return
-
-    if chain not in CHAINS:
+    if raw_chain and raw_chain != "all" and raw_chain not in CHAINS:
         lines = [t["watch_bad_chain"]]
         lines += [f"  `{k}` — {v['label']}" for k, v in CHAINS.items()]
         await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
         return
 
+    chains_to_add = list(CHAINS.keys()) if (not raw_chain or raw_chain == "all") else [raw_chain]
+
+    if not address.startswith("0x") or len(address) != 42:
+        await update.message.reply_text(t["watch_invalid"], parse_mode="Markdown")
+        return
+
     data = _load_json(WATCH_FILE)
     uid_str = str(uid)
     normalized = [_normalize(e) for e in data.get(uid_str, [])]
-    for e in normalized:
-        if e["address"] == address and e["chain"] == chain:
-            await update.message.reply_text(t["watch_exists"], parse_mode="Markdown")
-            return
+    blocks = _load_json(LAST_BLOCK_FILE)
+    added = []
+    for c in chains_to_add:
+        # skip if already exists
+        exists = any(e["address"] == address and e["chain"] == c for e in normalized)
+        if exists:
+            continue
+        entry = {"address": address, "chain": c}
+        normalized.append(entry)
+        blocks.pop(_key(entry), None)
+        added.append(c)
 
-    entry = {"address": address, "chain": chain}
-    normalized.append(entry)
+    if not added:
+        await update.message.reply_text(t["watch_exists"], parse_mode="Markdown")
+        return
+
     data[uid_str] = normalized
     _save_json(WATCH_FILE, data)
-
-    # Remove old last-block entry so next check treats it as first-run
-    bk = _key(entry)
-    blocks = _load_json(LAST_BLOCK_FILE)
-    blocks.pop(bk, None)
     _save_json(LAST_BLOCK_FILE, blocks)
 
-    label = CHAINS[chain]["label"]
+    labels = ", ".join(CHAINS[c]["label"] for c in added)
     await update.message.reply_text(
-        t["watch_added"].format(f"{address} ({label})"), parse_mode="Markdown"
+        t["watch_added"].format(f"{address} ({labels})"), parse_mode="Markdown"
     )
 
 
