@@ -96,57 +96,111 @@ async def wallets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
+CHAIN_ACTIONS = [
+    ("ETH", 1, "txlist"),
+    ("ETH", 1, "tokentx"),
+]
+
+
+def _fetch_txs(address: str, chainid: int, action: str):
+    params = {
+        "chainid": chainid,
+        "module": "account",
+        "action": action,
+        "address": address,
+        "startblock": 0,
+        "endblock": 99999999,
+        "sort": "desc",
+        "page": 1,
+        "offset": 5,
+        "apikey": ETHERSCAN_KEY,
+    }
+    res = requests.get(ETHERSCAN_V2, params=params, timeout=10)
+    txs = res.json().get("result", [])
+    return txs if isinstance(txs, list) else []
+
+
+def _format_tx(tx: dict, address: str) -> dict:
+    """Normalize both ETH txlist and tokentx entries into a uniform dict."""
+    value_raw = int(tx.get("value", 0))
+    is_token = "tokenSymbol" in tx
+
+    if is_token:
+        token_symbol = tx.get("tokenSymbol", "?")
+        token_decimal = int(tx.get("tokenDecimal", 18))
+        token_value = value_raw / (10 ** token_decimal)
+        value_label = f"{token_value:,.4f} {token_symbol}"
+        usd_value = None
+        tx_hash = tx.get("hash", "")
+    else:
+        eth_value = value_raw / 1e18
+        value_label = f"{eth_value:.4f} ETH"
+        usd_value = eth_value
+        tx_hash = tx.get("hash", "")
+
+    return {
+        "hash": tx_hash,
+        "value_label": value_label,
+        "usd_value": usd_value,
+        "from": tx.get("from", ""),
+        "to": tx.get("to", ""),
+        "is_token": is_token,
+        "token_symbol": tx.get("tokenSymbol"),
+        "_address": address,
+    }
+
+
 def check_new_txs():
     if not ETHERSCAN_KEY:
         return {}
 
     data = _load_json(WATCH_FILE)
     last_tx = _load_json(LAST_TX_FILE)
-    notifications = {}  # uid -> list of tx dicts
+    notifications = {}
 
     for uid_str, addresses in data.items():
         for address in addresses:
-            try:
-                params = {
-                    "chainid": 1,
-                    "module": "account",
-                    "action": "txlist",
-                    "address": address,
-                    "startblock": 0,
-                    "endblock": 99999999,
-                    "sort": "desc",
-                    "page": 1,
-                    "offset": 3,
-                    "apikey": ETHERSCAN_KEY,
-                }
-                res = requests.get(ETHERSCAN_V2, params=params, timeout=10)
-                txs = res.json().get("result", [])
-                if not isinstance(txs, list) or not txs:
+            all_txs = []
+            seen_hashes = set()
+
+            for chain_name, chainid, action in CHAIN_ACTIONS:
+                try:
+                    txs = _fetch_txs(address, chainid, action)
+                    for tx in txs:
+                        h = tx.get("hash", "")
+                        if h and h not in seen_hashes:
+                            seen_hashes.add(h)
+                            all_txs.append((h, tx))
+                except Exception as e:
+                    logger.warning(f"{chain_name}/{action} failed for {address}: {e}")
                     continue
 
-                prev_hash = last_tx.get(address)
-                new_hashes = []
-                for tx in txs:
-                    h = tx.get("hash")
-                    if h == prev_hash:
-                        break
-                    new_hashes.append(tx)
-                    if len(new_hashes) >= 2:
-                        break
+            all_txs.sort(key=lambda x: int(x[1].get("timeStamp", 0) or 0), reverse=True)
+            all_txs = all_txs[:5]
 
-                if new_hashes:
-                    last_tx[address] = txs[0].get("hash")
-                    if prev_hash is not None:
-                        if uid_str not in notifications:
-                            notifications[uid_str] = []
-                        for tx in new_hashes:
-                            notifications[uid_str].append({**tx, "_address": address})
-                    else:
-                        last_tx[address] = txs[0].get("hash")
-
-            except Exception as e:
-                logger.warning(f"check_new_txs failed for {address}: {e}")
+            if not all_txs:
                 continue
+
+            latest_hash = all_txs[0][0]
+            prev_hash = last_tx.get(address)
+            new_items = []
+
+            for h, tx in all_txs:
+                if h == prev_hash:
+                    break
+                new_items.append(tx)
+                if len(new_items) >= 2:
+                    break
+
+            if new_items:
+                last_tx[address] = latest_hash
+                if prev_hash is not None:
+                    if uid_str not in notifications:
+                        notifications[uid_str] = []
+                    for tx in new_items:
+                        notifications[uid_str].append(_format_tx(tx, address))
+                else:
+                    last_tx[address] = latest_hash
 
     _save_json(LAST_TX_FILE, last_tx)
     return notifications

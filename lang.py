@@ -86,7 +86,7 @@ FA = {
     "watch_not_found": "❌ این آدرس در لیست رصدت نیست.",
     "wallets_title": "👁 *ولت‌های تحت رصد:*\n",
     "wallets_empty": "📭 هیچ ولتی رصد نمی‌شه.\nبرای افزودن: `/watch 0x...`",
-    "watch_notification": "🔔 *تراکنش جدید*\n\n📋 هش: `{}`\n💵 مقدار: `{} ETH` (${:,.2f})\n📤 از: `{}`\n📥 به: `{}`\n🔗 [مشاهده در اتراسکن](https://etherscan.io/tx/{})",
+    "watch_notification": "🔔 *تراکنش جدید*\n\n📋 هش: `{}`\n💵 مقدار: `{}` (${:,.2f})\n📤 از: `{}`\n📥 به: `{}`\n🔗 [مشاهده در اتراسکن](https://etherscan.io/tx/{})",
 }
 
 EN = {
@@ -166,5 +166,5 @@ EN = {
     "watch_not_found": "❌ This address is not in your watchlist.",
     "wallets_title": "👁 *Watched Wallets:*\n",
     "wallets_empty": "📭 No wallets being watched.\nTo add: `/watch 0x...`",
-    "watch_notification": "🔔 *New Transaction*\n\n📋 Hash: `{}`\n💵 Value: `{} ETH` (${:,.2f})\n📤 From: `{}`\n📥 To: `{}`\n🔗 [View on Etherscan](https://etherscan.io/tx/{})",
+    "watch_notification": "🔔 *New Transaction*\n\n📋 Hash: `{}`\n💵 Value: `{}` (${:,.2f})\n📤 From: `{}`\n📥 To: `{}`\n🔗 [View on Etherscan](https://etherscan.io/tx/{})",
 }

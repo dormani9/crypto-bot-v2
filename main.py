@@ -51,19 +51,25 @@ async def check_wallets(context: ContextTypes.DEFAULT_TYPE):
             lang_code = get_lang(uid)
             t = FA if lang_code == "fa" else EN
             addr = tx["_address"]
-            value_eth = int(tx.get("value", 0)) / 1e18
-            from_addr = tx.get("from", "?")[:10] + "..." + tx.get("from", "?")[-6:]
-            to_addr = tx.get("to", "")[:10] + "..." + tx.get("to", "")[-6:] if tx.get("to") else "N/A"
+            from_short = tx["from"][:10] + "..." + tx["from"][-6:] if tx.get("from") and len(tx["from"]) > 16 else tx.get("from", "?")
+            to_short = tx["to"][:10] + "..." + tx["to"][-6:] if tx.get("to") and len(tx["to"]) > 16 else tx.get("to", "N/A")
             tx_hash = tx.get("hash", "?")
-            usd_value = value_eth * _get_eth_price()
-            text = t["watch_notification"].format(
-                tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash,
-                f"{value_eth:.4f}",
-                usd_value,
-                from_addr,
-                to_addr,
-                tx_hash,
-            )
+            tx_short = tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash
+
+            if tx["is_token"]:
+                text = (
+                    f"🔔 *{'تراکنش توکن' if lang_code == 'fa' else 'Token Transaction'}*\n\n"
+                    f"💱 {tx['value_label']}\n"
+                    f"📤 {from_short}\n"
+                    f"📥 {to_short}\n"
+                    f"📋 `{tx_short}`\n"
+                    f"🔗 [{'مشاهده' if lang_code == 'fa' else 'View'}](https://etherscan.io/tx/{tx_hash})"
+                    f" — *{tx.get('token_symbol', '?')}*"
+                )
+            else:
+                usd_value = float(tx.get("usd_value", 0) or 0) * _get_eth_price()
+                text = t["watch_notification"].format(tx_short, tx["value_label"], usd_value, from_short, to_short, tx_hash)
+
             try:
                 await context.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown", disable_web_page_preview=True)
             except Exception as e:
