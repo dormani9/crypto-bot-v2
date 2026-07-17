@@ -7,6 +7,12 @@ from lang import EN, FA, get_lang, set_lang
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
 
+    try:
+        with open("assets/header.png", "rb") as f:
+            await update.message.reply_photo(f)
+    except Exception:
+        pass
+
     keyboard = [
         [
             InlineKeyboardButton("🇬🇧 English", callback_data="lang_en"),
