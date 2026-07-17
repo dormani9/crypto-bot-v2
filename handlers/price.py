@@ -11,8 +11,8 @@ async def price(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     args = context.args
     if not args:
-        await update.message.reply_text(t["price_usage"], parse_mode="Markdown")
-        return
+        args = ["bitcoin", "ethereum", "solana", "ripple", "cardano",
+                "dogecoin", "polkadot", "chainlink", "avalanche-2", "matic-network"]
 
     try:
         data = fetch_prices(args)
