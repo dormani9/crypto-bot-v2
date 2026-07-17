@@ -15,7 +15,7 @@ LAST_BLOCK_FILE = Path(__file__).parent.parent / "last-block.json"
 logger = logging.getLogger(__name__)
 
 CHAINS = {
-    # Etherscan V2 (works with API key for eth, free tier for some)
+    # Etherscan V2 (works: eth with API key, hyperevm/unichain on free tier)
     "eth":        {"id": 1,        "label": "Ethereum",        "type": "v2"},
     "hyperevm":   {"id": 999,      "label": "HyperEVM",        "type": "v2"},
     "unichain":   {"id": 130,      "label": "Unichain",        "type": "v2"},
@@ -23,28 +23,9 @@ CHAINS = {
     # Blockscout Pro API
     "rhodefi":    {"id": 4663,     "label": "Robinhood Chain", "type": "blockscout"},
 
-    # Public Blockscout instances (support /api?module=account&action=txlist)
+    # Public Blockscout instances (confirmed working)
     "base":       {"id": 8453,     "label": "Base",            "type": "explorer", "url": "base.blockscout.com"},
     "op":         {"id": 10,       "label": "Optimism",        "type": "explorer", "url": "optimism.blockscout.com"},
-    "zksync":     {"id": 324,      "label": "zkSync Era",      "type": "explorer", "url": "block-explorer-api.mainnet.zksync.io"},
-    "mantle":     {"id": 5000,     "label": "Mantle",          "type": "explorer", "url": "explorer.mantle.xyz"},
-    "aurora":     {"id": 1313161554,"label": "Aurora",          "type": "explorer", "url": "explorer.mainnet.aurora.dev"},
-    "metis":      {"id": 1088,     "label": "Metis",           "type": "explorer", "url": "andromeda-explorer.metis.io"},
-    "celo":       {"id": 42220,    "label": "Celo",            "type": "explorer", "url": "explorer.celo.org"},
-    "moonbeam":   {"id": 1284,     "label": "Moonbeam",        "type": "explorer", "url": "moonbeam.blockscout.com"},
-    "polygonzk":  {"id": 1101,     "label": "Polygon zkEVM",   "type": "explorer", "url": "zkevm.blockscout.com"},
-
-    # Etherscan-family — V1 deprecated → try common Blockscout instances
-    "bsc":        {"id": 56,       "label": "BSC",             "type": "explorer", "url": "bsc.blockscout.com"},
-    "polygon":    {"id": 137,      "label": "Polygon",         "type": "explorer", "url": "polygon.blockscout.com"},
-    "arb":        {"id": 42161,    "label": "Arbitrum",        "type": "explorer", "url": "arbitrum.blockscout.com"},
-    "avax":       {"id": 43114,    "label": "Avalanche",       "type": "explorer", "url": "avalanche.blockscout.com"},
-    "linea":      {"id": 59144,    "label": "Linea",           "type": "explorer", "url": "linea.blockscout.com"},
-    "scroll":     {"id": 534352,   "label": "Scroll",          "type": "explorer", "url": "scroll.blockscout.com"},
-    "blast":      {"id": 81457,    "label": "Blast",           "type": "explorer", "url": "blast.blockscout.com"},
-    "gnosis":     {"id": 100,      "label": "Gnosis",          "type": "explorer", "url": "gnosis.blockscout.com"},
-    "cro":        {"id": 25,       "label": "Cronos",          "type": "explorer", "url": "cronos.blockscout.com"},
-    "ftm":        {"id": 250,      "label": "Fantom",          "type": "explorer", "url": "fantom.blockscout.com"},
 }
 
 
