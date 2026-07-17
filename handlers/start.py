@@ -1,5 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CommandHandler, ContextTypes, filters
+from telegram.ext import CommandHandler, ContextTypes
 
 from lang import EN, FA, get_lang, set_lang
 
@@ -67,7 +67,7 @@ async def lang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     return [
-        CommandHandler("start", start, filters.TEXT),
-        CommandHandler("help", help_cmd, filters.TEXT),
-        CommandHandler("lang", lang_cmd, filters.TEXT),
+        CommandHandler("start", start),
+        CommandHandler("help", help_cmd),
+        CommandHandler("lang", lang_cmd),
     ]

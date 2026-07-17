@@ -2,7 +2,7 @@ import os
 
 import requests
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes, filters
+from telegram.ext import CommandHandler, ContextTypes
 
 from lang import EN, FA, get_lang
 
@@ -80,4 +80,4 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def get_handlers():
-    return [CommandHandler("whale", whale, filters.TEXT)]
+    return [CommandHandler("whale", whale)]

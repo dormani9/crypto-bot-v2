@@ -1,6 +1,6 @@
 import requests
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes, filters
+from telegram.ext import CommandHandler, ContextTypes
 
 from lang import EN, FA, get_lang
 
@@ -37,4 +37,4 @@ async def fng(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def get_handlers():
-    return [CommandHandler("fng", fng, filters.TEXT)]
+    return [CommandHandler("fng", fng)]

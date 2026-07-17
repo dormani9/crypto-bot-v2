@@ -2,7 +2,7 @@ import os
 
 import requests
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes, filters
+from telegram.ext import CommandHandler, ContextTypes
 
 from lang import EN, FA, get_lang
 
@@ -57,4 +57,4 @@ async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def get_handlers():
-    return [CommandHandler("gas", gas, filters.TEXT)]
+    return [CommandHandler("gas", gas)]

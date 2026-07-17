@@ -2,7 +2,7 @@ import os
 
 from openai import OpenAI
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes, filters
+from telegram.ext import CommandHandler, ContextTypes
 
 from lang import EN, FA, get_lang
 
@@ -49,4 +49,4 @@ async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def get_handlers():
-    return [CommandHandler("ask", ask, filters.TEXT)]
+    return [CommandHandler("ask", ask)]

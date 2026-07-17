@@ -1,7 +1,7 @@
 import feedparser
 from deep_translator import GoogleTranslator
 from telegram import Update
-from telegram.ext import CommandHandler, ContextTypes, filters
+from telegram.ext import CommandHandler, ContextTypes
 
 FEEDS = [
     ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
@@ -59,6 +59,6 @@ async def fnews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     return [
-        CommandHandler("news", news, filters.TEXT),
-        CommandHandler("fnews", fnews, filters.TEXT),
+        CommandHandler("news", news),
+        CommandHandler("fnews", fnews),
     ]
