@@ -15,18 +15,32 @@ LAST_BLOCK_FILE = Path(__file__).parent.parent / "last-block.json"
 logger = logging.getLogger(__name__)
 
 CHAINS = {
-    # Etherscan V2 (works: eth with API key, hyperevm/unichain on free tier)
-    "eth":        {"id": 1,        "label": "Ethereum",        "type": "v2"},
-    "hyperevm":   {"id": 999,      "label": "HyperEVM",        "type": "v2"},
-    "unichain":   {"id": 130,      "label": "Unichain",        "type": "v2"},
-
-    # Blockscout Pro API
-    "rhodefi":    {"id": 4663,     "label": "Robinhood Chain", "type": "blockscout"},
-
-    # Public Blockscout instances (confirmed working)
-    "base":       {"id": 8453,     "label": "Base",            "type": "explorer", "url": "base.blockscout.com"},
-    "op":         {"id": 10,       "label": "Optimism",        "type": "explorer", "url": "optimism.blockscout.com"},
+    "eth":        {"id": 1,        "label": "Ethereum"},
+    "bsc":        {"id": 56,       "label": "BSC"},
+    "polygon":    {"id": 137,      "label": "Polygon"},
+    "arb":        {"id": 42161,    "label": "Arbitrum"},
+    "op":         {"id": 10,       "label": "Optimism"},
+    "base":       {"id": 8453,     "label": "Base"},
+    "avax":       {"id": 43114,    "label": "Avalanche"},
+    "cro":        {"id": 25,       "label": "Cronos"},
+    "ftm":        {"id": 250,      "label": "Fantom"},
+    "gnosis":     {"id": 100,      "label": "Gnosis"},
+    "zksync":     {"id": 324,      "label": "zkSync Era"},
+    "linea":      {"id": 59144,    "label": "Linea"},
+    "scroll":     {"id": 534352,   "label": "Scroll"},
+    "blast":      {"id": 81457,    "label": "Blast"},
+    "mantle":     {"id": 5000,     "label": "Mantle"},
+    "moonbeam":   {"id": 1284,     "label": "Moonbeam"},
+    "celo":       {"id": 42220,    "label": "Celo"},
+    "polygonzk":  {"id": 1101,     "label": "Polygon zkEVM"},
+    "aurora":     {"id": 1313161554,"label": "Aurora"},
+    "metis":      {"id": 1088,     "label": "Metis"},
+    "hyperevm":   {"id": 999,      "label": "HyperEVM"},
+    "unichain":   {"id": 130,      "label": "Unichain"},
+    "rhodefi":    {"id": 4663,     "label": "Robinhood Chain"},
 }
+
+COVALENT_KEY = os.getenv("COVALENT_API_KEY")
 
 
 def _load_json(path):
@@ -172,42 +186,40 @@ async def wallets(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _fetch(address, chain_name):
-    """Fetch latest normal tx + token tx for a wallet on a chain."""
-    chain = CHAINS[chain_name]
-    ctype = chain["type"]
+    """Fetch latest txs + token transfers via Covalent API."""
+    chain = CHAINS.get(chain_name)
+    if not chain:
+        return []
+    chain_id = chain["id"]
     out = []
 
-    for action in ("txlist", "tokentx"):
+    if not COVALENT_KEY:
+        return out
+
+    for endpoint, is_token in [("transactions_v2", False), ("transfers_v2", True)]:
         try:
-            if ctype == "v2":
-                # Etherscan V2 unified API
-                key = os.getenv("ETHERSCAN_API_KEY")
-                params = {"chainid": chain["id"], "module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
-                if key:
-                    params["apikey"] = key
-                r = requests.get("https://api.etherscan.io/v2/api", params=params, timeout=12)
-
-            elif ctype == "blockscout":
-                # Blockscout Pro API
-                key = os.getenv("BLOCKSCOUT_API_KEY")
-                params = {"chain_id": chain["id"], "module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
-                if key:
-                    params["apikey"] = key
-                r = requests.get("https://api.blockscout.com/v2/api", params=params, timeout=12)
-
-            else:  # "explorer"
-                # Public explorer (Blockscout etc.) with Etherscan-compatible format
-                params = {"module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
-                r = requests.get(f"https://{chain['url']}/api", params=params, timeout=12)
-
+            url = f"https://api.covalenthq.com/v1/{chain_id}/address/{address}/{endpoint}/"
+            params = {"key": COVALENT_KEY, "page-size": 5}
+            r = requests.get(url, params=params, timeout=15)
             data = r.json()
-            items = data.get("result", [])
-            if isinstance(items, list):
-                out.extend(items)
-            else:
-                logger.info(f"_fetch {chain_name}/{action}: msg={data.get('message','?')} result={str(items)[:200]}")
+            items = (data.get("data") or {}).get("items", [])
+            if not isinstance(items, list):
+                continue
+            for tx in items:
+                entry = {
+                    "hash": tx.get("tx_hash", ""),
+                    "from": tx.get("from_address", ""),
+                    "to": tx.get("to_address", ""),
+                    "blockNumber": str(tx.get("block_height", 0) or 0),
+                    "value": str(tx.get("delta", "0")) if is_token else str(tx.get("value", "0")),
+                    "is_token": is_token,
+                }
+                if is_token:
+                    entry["tokenSymbol"] = tx.get("contract_ticker_symbol", "")
+                    entry["tokenDecimal"] = tx.get("contract_decimals", 18)
+                out.append(entry)
         except Exception as e:
-            logger.warning(f"_fetch {chain_name}/{action} {address[:10]}: {e}")
+            logger.warning(f"_fetch {chain_name}/{endpoint} {address[:10]}: {e}")
     return out
 
 
