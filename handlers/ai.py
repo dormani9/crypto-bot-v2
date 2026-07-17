@@ -4,6 +4,8 @@ from openai import OpenAI
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
+from lang import EN, FA, get_lang
+
 API_KEY = os.getenv("FREEMODEL_API_KEY")
 BASE_URL = "https://api.freemodel.dev/v1"
 
@@ -16,20 +18,19 @@ SYSTEM = (
 
 
 async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+
     if not client:
-        await update.message.reply_text(
-            "AI is not configured.\n"
-            "Set `FREEMODEL_API_KEY` in .env",
-            parse_mode="Markdown",
-        )
+        await update.message.reply_text(t["ai_not_configured"], parse_mode="Markdown")
         return
 
     question = " ".join(context.args)
     if not question:
-        await update.message.reply_text("Usage: `/ask what is Ethereum?`", parse_mode="Markdown")
+        await update.message.reply_text(t["ai_usage"], parse_mode="Markdown")
         return
 
-    msg = await update.message.reply_text("🤔 Thinking...")
+    msg = await update.message.reply_text(t["ai_thinking"])
 
     try:
         res = client.chat.completions.create(
@@ -44,7 +45,7 @@ async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = res.choices[0].message.content
         await msg.edit_text(f"🤖 *AI Assistant*\n\n{answer}", parse_mode="Markdown")
     except Exception as e:
-        await msg.edit_text(f"Error: {e}")
+        await msg.edit_text(f"{t['ai_error']} {e}")
 
 
 def get_handlers():

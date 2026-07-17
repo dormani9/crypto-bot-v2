@@ -6,6 +6,8 @@ import requests
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
+from lang import EN, FA, get_lang
+
 DATA_FILE = Path(__file__).parent.parent / "portfolio.json"
 
 
@@ -20,14 +22,12 @@ def _save(data):
 
 
 async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+
     data = _load()
     if not data:
-        await update.message.reply_text(
-            "Portfolio is empty.\n"
-            "Add: `/add bitcoin 0.5`\n"
-            "Remove: `/remove bitcoin`",
-            parse_mode="Markdown",
-        )
+        await update.message.reply_text(t["portfolio_empty"], parse_mode="Markdown")
         return
 
     ids = ",".join(data.keys())
@@ -39,7 +39,7 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         prices = res.json()
     except Exception:
-        await update.message.reply_text("Error fetching prices.")
+        await update.message.reply_text(t["price_error"])
         return
 
     total = 0
@@ -55,37 +55,43 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+
     if len(context.args) < 2:
-        await update.message.reply_text("Usage: `/add bitcoin 0.5`", parse_mode="Markdown")
+        await update.message.reply_text(t["add_usage"], parse_mode="Markdown")
         return
 
     coin, amount_str = context.args[0].lower(), context.args[1]
     try:
         amount = float(amount_str)
     except ValueError:
-        await update.message.reply_text("Invalid amount.")
+        await update.message.reply_text(t["add_invalid"])
         return
 
     data = _load()
     data[coin] = data.get(coin, 0) + amount
     _save(data)
-    await update.message.reply_text(f"✅ Added {amount} {coin.title()}")
+    await update.message.reply_text(t["portfolio_added"].format(amount, coin.title()))
 
 
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+
     if not context.args:
-        await update.message.reply_text("Usage: `/remove bitcoin`", parse_mode="Markdown")
+        await update.message.reply_text(t["remove_usage"], parse_mode="Markdown")
         return
 
     coin = context.args[0].lower()
     data = _load()
     if coin not in data:
-        await update.message.reply_text(f"{coin.title()} not in portfolio.")
+        await update.message.reply_text(t["portfolio_not_found"].format(coin.title()))
         return
 
     del data[coin]
     _save(data)
-    await update.message.reply_text(f"✅ Removed {coin.title()}")
+    await update.message.reply_text(t["portfolio_removed"].format(coin.title()))
 
 
 def get_handlers():

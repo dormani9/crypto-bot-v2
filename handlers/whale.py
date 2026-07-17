@@ -4,21 +4,22 @@ import requests
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
+from lang import EN, FA, get_lang
+
 ETHERSCAN_KEY = os.getenv("ETHERSCAN_API_KEY")
 ETHERSCAN_URL = "https://api.etherscan.io/api"
 WHALE_THRESHOLD = 1_000_000
 
 
 async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+
     if not ETHERSCAN_KEY:
-        await update.message.reply_text(
-            "Set `ETHERSCAN_API_KEY` in .env\n"
-            "Get a free key: https://etherscan.io/myapikey",
-            parse_mode="Markdown",
-        )
+        await update.message.reply_text(t["whale_error"], parse_mode="Markdown")
         return
 
-    msg = await update.message.reply_text("🐋 Scanning...")
+    msg = await update.message.reply_text(t["whale_scanning"])
 
     try:
         eth_resp = requests.get(
@@ -41,10 +42,10 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
         res.raise_for_status()
         result = res.json().get("result", [])
     except Exception as e:
-        await msg.edit_text(f"Error: {e}")
+        await msg.edit_text(f"{t['ai_error']} {e}")
         return
 
-    lines = ["🐋 *Whale Transactions*\n"]
+    lines = [t["whale_title"]]
     count = 0
     for tx in result:
         if count >= 5:
@@ -52,17 +53,16 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
         value_eth = int(tx["value"]) / 1e18
         if value_eth * eth_price < WHALE_THRESHOLD:
             continue
-        tx_hash = tx["hash"][:10] + "..." + tx["hash"][-6:]
         lines.append(
             f"🔹 *${value_eth * eth_price:,.0f}* ({value_eth:,.2f} ETH)\n"
             f"   From `{tx['from'][:6]}...{tx['from'][-4:]}`\n"
             f"   To `{tx['to'][:6]}...{tx['to'][-4:] if tx['to'] else 'N/A'}`\n"
-            f"   [`{tx_hash}`](https://etherscan.io/tx/{tx['hash']})\n"
+            f"   [`{tx['hash'][:10]}...{tx['hash'][-6:]}`](https://etherscan.io/tx/{tx['hash']})\n"
         )
         count += 1
 
     if count == 0:
-        lines.append("No large transactions found.")
+        lines.append(t["whale_none"])
 
     await msg.edit_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
 

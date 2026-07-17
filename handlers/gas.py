@@ -2,9 +2,14 @@ import requests
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
+from lang import EN, FA, get_lang
+
 
 async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = await update.message.reply_text("⛽ Fetching...")
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+
+    msg = await update.message.reply_text(t["gas_fetching"])
 
     try:
         eth_resp = requests.get(
@@ -22,15 +27,15 @@ async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
         fast = data.get("fast", 30) / 10
 
         await msg.edit_text(
-            f"⛽ *Ethereum Gas Fees*\n\n"
-            f"🐢 Safe: `{safe:.1f}` Gwei\n"
-            f"🚶 Normal: `{normal:.1f}` Gwei\n"
-            f"🚀 Fast: `{fast:.1f}` Gwei\n\n"
+            f"{t['gas_title']}"
+            f"{t['gas_safe']} `{safe:.1f}` Gwei\n"
+            f"{t['gas_normal']} `{normal:.1f}` Gwei\n"
+            f"{t['gas_fast']} `{fast:.1f}` Gwei\n\n"
             f"ETH: `${eth_price}`",
             parse_mode="Markdown",
         )
     except Exception as e:
-        await msg.edit_text(f"Error: {e}")
+        await msg.edit_text(f"{t['ai_error']} {e}")
 
 
 def get_handlers():
