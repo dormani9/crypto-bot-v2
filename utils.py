@@ -20,6 +20,17 @@ COIN_ALIASES = {
     "near": "near", "apt": "aptos", "sui": "sui", "arb": "arbitrum",
     "op": "optimism", "inj": "injective", "ldo": "lido-dao",
     "rune": "thorchain", "ftm": "fantom", "cake": "pancakeswap",
+    "ofc": "onefootball-club",
+    "shib": "shiba-inu", "ton": "the-open-network",
+    "tia": "celestia", "sei": "sei-network",
+    "stx": "blockstack", "egld": "elrond-erd-2",
+    "algo": "algorand", "frtn": "forta",
+    "pendle": "pendle", "ondo": "ondo-finance",
+    "jto": "jito-governance-token", "io": "io-net",
+    "strk": "starknet", "wld": "worldcoin-wld",
+    "pepe": "pepe", "floki": "floki",
+    "bonk": "bonk", "wif": "dogwifhat",
+    "meme": "memecoin",
 }
 
 

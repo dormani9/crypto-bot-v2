@@ -11,8 +11,15 @@ async def price(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     args = context.args
     if not args:
-        args = ["bitcoin", "ethereum", "solana", "ripple", "cardano",
-                "dogecoin", "polkadot", "chainlink", "avalanche-2", "matic-network"]
+        args = [  # top coins by market cap + user requests
+            "bitcoin", "ethereum", "solana", "ripple", "cardano",
+            "dogecoin", "polkadot", "chainlink", "avalanche-2", "matic-network",
+            "tron", "litecoin", "shiba-inu", "the-open-network",
+            "binancecoin", "aptos", "arbitrum", "optimism",
+            "vechain", "near", "injective", "sei-network",
+            "starknet", "worldcoin-wld", "pepe", "bonk",
+            "onefootball-club", "dogwifhat",
+        ]
 
     try:
         data = fetch_prices(args)
