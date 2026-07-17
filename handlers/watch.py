@@ -12,34 +12,36 @@ from lang import EN, FA, get_lang
 WATCH_FILE = Path(__file__).parent.parent / "wallet-monitor.json"
 LAST_TX_FILE = Path(__file__).parent.parent / "last-tx.json"
 ETHERSCAN_KEY = os.getenv("ETHERSCAN_API_KEY")
+BLOCKSCOUT_KEY = os.getenv("BLOCKSCOUT_API_KEY")
 ETHERSCAN_V2 = "https://api.etherscan.io/v2/api"
+BLOCKSCOUT_V2 = "https://api.blockscout.com/v2/api"
 
 logger = logging.getLogger(__name__)
 
 CHAINS = {
-    "eth": {"id": 1, "label": "Ethereum"},
-    "bsc": {"id": 56, "label": "BSC"},
-    "polygon": {"id": 137, "label": "Polygon"},
-    "arb": {"id": 42161, "label": "Arbitrum"},
-    "op": {"id": 10, "label": "Optimism"},
-    "base": {"id": 8453, "label": "Base"},
-    "avax": {"id": 43114, "label": "Avalanche"},
-    "cro": {"id": 25, "label": "Cronos"},
-    "ftm": {"id": 250, "label": "Fantom"},
-    "gnosis": {"id": 100, "label": "Gnosis"},
-    "zksync": {"id": 324, "label": "zkSync Era"},
-    "linea": {"id": 59144, "label": "Linea"},
-    "scroll": {"id": 534352, "label": "Scroll"},
-    "blast": {"id": 81457, "label": "Blast"},
-    "mantle": {"id": 5000, "label": "Mantle"},
-    "moonbeam": {"id": 1284, "label": "Moonbeam"},
-    "celo": {"id": 42220, "label": "Celo"},
-    "polygonzk": {"id": 1101, "label": "Polygon zkEVM"},
-    "aurora": {"id": 1313161554, "label": "Aurora"},
-    "metis": {"id": 1088, "label": "Metis"},
-    "hyperevm": {"id": 999, "label": "HyperEVM"},
-    "unichain": {"id": 130, "label": "Unichain"},
-    "rhodefi": {"id": 4663, "label": "Robinhood Chain"},
+    "eth": {"id": 1, "label": "Ethereum", "api": "etherscan"},
+    "bsc": {"id": 56, "label": "BSC", "api": "etherscan"},
+    "polygon": {"id": 137, "label": "Polygon", "api": "etherscan"},
+    "arb": {"id": 42161, "label": "Arbitrum", "api": "etherscan"},
+    "op": {"id": 10, "label": "Optimism", "api": "etherscan"},
+    "base": {"id": 8453, "label": "Base", "api": "etherscan"},
+    "avax": {"id": 43114, "label": "Avalanche", "api": "etherscan"},
+    "cro": {"id": 25, "label": "Cronos", "api": "etherscan"},
+    "ftm": {"id": 250, "label": "Fantom", "api": "etherscan"},
+    "gnosis": {"id": 100, "label": "Gnosis", "api": "etherscan"},
+    "zksync": {"id": 324, "label": "zkSync Era", "api": "etherscan"},
+    "linea": {"id": 59144, "label": "Linea", "api": "etherscan"},
+    "scroll": {"id": 534352, "label": "Scroll", "api": "etherscan"},
+    "blast": {"id": 81457, "label": "Blast", "api": "etherscan"},
+    "mantle": {"id": 5000, "label": "Mantle", "api": "etherscan"},
+    "moonbeam": {"id": 1284, "label": "Moonbeam", "api": "etherscan"},
+    "celo": {"id": 42220, "label": "Celo", "api": "etherscan"},
+    "polygonzk": {"id": 1101, "label": "Polygon zkEVM", "api": "etherscan"},
+    "aurora": {"id": 1313161554, "label": "Aurora", "api": "etherscan"},
+    "metis": {"id": 1088, "label": "Metis", "api": "etherscan"},
+    "hyperevm": {"id": 999, "label": "HyperEVM", "api": "etherscan"},
+    "unichain": {"id": 130, "label": "Unichain", "api": "etherscan"},
+    "rhodefi": {"id": 4663, "label": "Robinhood Chain", "api": "blockscout"},
 }
 
 CHAIN_ACTIONS = ["txlist", "tokentx"]
@@ -170,20 +172,42 @@ async def wallets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
-def _fetch_txs(address: str, chainid: int, action: str):
-    params = {
-        "chainid": chainid,
-        "module": "account",
-        "action": action,
-        "address": address,
-        "startblock": 0,
-        "endblock": 99999999,
-        "sort": "desc",
-        "page": 1,
-        "offset": 5,
-        "apikey": ETHERSCAN_KEY,
-    }
-    res = requests.get(ETHERSCAN_V2, params=params, timeout=10)
+def _fetch_txs(address: str, chain_name: str, action: str):
+    chain = CHAINS[chain_name]
+    chainid = chain["id"]
+    api = chain.get("api", "etherscan")
+
+    if api == "blockscout":
+        key = os.getenv("BLOCKSCOUT_API_KEY")
+        url = "https://api.blockscout.com/v2/api"
+        params = {
+            "chain_id": chainid,
+            "module": "account",
+            "action": action,
+            "address": address,
+            "sort": "desc",
+            "offset": 5,
+        }
+        if key:
+            params["apikey"] = key
+    else:
+        key = os.getenv("ETHERSCAN_API_KEY")
+        url = "https://api.etherscan.io/v2/api"
+        params = {
+            "chainid": chainid,
+            "module": "account",
+            "action": action,
+            "address": address,
+            "startblock": 0,
+            "endblock": 99999999,
+            "sort": "desc",
+            "page": 1,
+            "offset": 5,
+        }
+        if key:
+            params["apikey"] = key
+
+    res = requests.get(url, params=params, timeout=10)
     txs = res.json().get("result", [])
     return txs if isinstance(txs, list) else []
 
@@ -219,7 +243,7 @@ def _format_tx(tx: dict, address: str, chain_label: str) -> dict:
 
 
 def check_new_txs():
-    if not ETHERSCAN_KEY:
+    if not ETHERSCAN_KEY and not BLOCKSCOUT_KEY:
         return {}
 
     data = _load_json(WATCH_FILE)
@@ -242,7 +266,7 @@ def check_new_txs():
 
             for action in CHAIN_ACTIONS:
                 try:
-                    txs = _fetch_txs(addr, chainid, action)
+                    txs = _fetch_txs(addr, chain_name, action)
                     for tx in txs:
                         h = tx.get("hash", "")
                         if h and h not in seen_hashes:
