@@ -33,7 +33,7 @@ A comprehensive bilingual (Persian/English) Telegram bot for the crypto world. L
 ## ✨ Features
 
 ### 🔸 Live Crypto Prices
-Display prices for 28+ top coins with 24h change indicators (🟢 up / 🔴 down). Supports aliases: `btc` → `bitcoin`, `eth` → `ethereum`, `sol` → `solana`, `ofc` → `onefootball-club` and 50+ other tokens.
+Display prices for 28+ top coins with 24h change indicators (🟢 up / 🔴 down). Supports aliases: `btc` → `bitcoin`, `eth` → `ethereum`, `sol` → `solana` → ` and 50+ other tokens.
 
 ### 🔸 Fear & Greed Index
 Market sentiment over the last 7 days with emojis: 😱 Extreme Fear → 🤑 Extreme Greed.
