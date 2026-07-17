@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, filters
 
-from ..utils import fetch_prices
+from utils import fetch_prices
 
 
 async def price(update: Update, context: ContextTypes.DEFAULT_TYPE):
