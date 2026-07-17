@@ -20,38 +20,63 @@ def fetch_prices(coin_ids: list[str]) -> dict:
     return res.json()
 
 
-TOMAN_SOURCES = [
+IRR_SOURCES = [
     {
-        "name": "Nobitex",
-        "url": "https://api.nobitex.ir/market/stats",
-        "params": {"srcCurrency": "usdt"},
-        "parse": lambda d: int(d["stats"]["usdt"]["latest"]),
-    },
-    {
-        "name": "Wallex",
-        "url": "https://api.wallex.ir/v1/markets",
-        "parse": lambda d: int(float([m for m in d["result"] if m["symbol"] == "USDTIRT"][0]["price"])),
-    },
-    {
-        "name": "Bit24",
-        "url": "https://api.bit24.ir/api/v1/markets",
-        "parse": lambda d: int(float([m for m in d if m["symbol"] == "USDTIRT"][0]["stats"]["last"])),
+        "name": "ExchangeRate-API",
+        "url": "https://open.er-api.com/v6/latest/USD",
+        "parse": lambda d: int(float(d["rates"]["IRR"])),
     },
 ]
 
 
 def fetch_toman_price() -> Tuple[Optional[int], Optional[int], Optional[str]]:
-    for src in TOMAN_SOURCES:
+    # First try Iranian exchange APIs
+    iranian_sources = [
+        {
+            "name": "Nobitex",
+            "url": "https://api.nobitex.ir/market/stats",
+            "params": {"srcCurrency": "usdt"},
+            "parse": lambda d: int(d["stats"]["usdt"]["latest"]),
+        },
+        {
+            "name": "Wallex",
+            "url": "https://api.wallex.ir/v1/markets",
+            "parse": lambda d: int(float([m for m in d["result"] if m["symbol"] == "USDTIRT"][0]["price"])),
+        },
+    ]
+
+    for src in iranian_sources:
         try:
             params = src.get("params", {})
-            logger.info(f"Trying {src['name']}...")
-            res = requests.get(src["url"], params=params, timeout=8)
+            res = requests.get(src["url"], params=params, timeout=5)
             res.raise_for_status()
             data = res.json()
-            usdt_price = src["parse"](data)
-            logger.info(f"{src['name']} success: {usdt_price}")
-            return usdt_price, usdt_price, src["name"]
+            price = src["parse"](data)
+            logger.info(f"USDT/IRR via {src['name']}: {price}")
+            return price, price, src["name"]
         except Exception as e:
             logger.warning(f"{src['name']} failed: {e}")
             continue
+
+    # Fallback: CoinGecko + ExchangeRate-API
+    try:
+        cg = requests.get(
+            COINGECKO_URL,
+            params={"ids": "tether", "vs_currencies": "usd"},
+            timeout=8,
+        )
+        usdt_usd = cg.json().get("tether", {}).get("usd", 1)
+
+        for src in IRR_SOURCES:
+            res = requests.get(src["url"], timeout=8)
+            res.raise_for_status()
+            data = res.json()
+            irr_per_usd = src["parse"](data)
+            toman_per_usd = irr_per_usd // 10  # 10 IRR = 1 Toman
+            usdt_toman = int(usdt_usd * toman_per_usd)
+            logger.info(f"USDT/Toman via fallback: {usdt_toman}")
+            return usdt_toman, toman_per_usd, f"{src['name']} + CoinGecko"
+    except Exception as e:
+        logger.error(f"Fallback failed: {e}")
+
     return None, None, None
