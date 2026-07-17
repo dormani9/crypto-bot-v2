@@ -7,6 +7,7 @@ from telegram.ext import CommandHandler, ContextTypes, filters
 from lang import EN, FA, get_lang
 
 ETHERSCAN_KEY = os.getenv("ETHERSCAN_API_KEY")
+ETHERSCAN_V2 = "https://api.etherscan.io/v2/api"
 
 
 async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -27,11 +28,12 @@ async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if ETHERSCAN_KEY:
             params = {
+                "chainid": 1,
                 "module": "gastracker",
                 "action": "gasoracle",
                 "apikey": ETHERSCAN_KEY,
             }
-            gas_resp = requests.get("https://api.etherscan.io/api", params=params, timeout=10)
+            gas_resp = requests.get(ETHERSCAN_V2, params=params, timeout=10)
             data = gas_resp.json().get("result")
             if isinstance(data, dict):
                 safe = data.get("SafeGasPrice", "?")

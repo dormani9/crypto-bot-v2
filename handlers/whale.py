@@ -7,7 +7,7 @@ from telegram.ext import CommandHandler, ContextTypes, filters
 from lang import EN, FA, get_lang
 
 ETHERSCAN_KEY = os.getenv("ETHERSCAN_API_KEY")
-ETHERSCAN_URL = "https://api.etherscan.io/api"
+ETHERSCAN_V2 = "https://api.etherscan.io/v2/api"
 WHALE_THRESHOLD = 1_000_000
 
 
@@ -30,6 +30,7 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
         eth_price = eth_resp.json().get("ethereum", {}).get("usd", 0)
 
         params = {
+            "chainid": 1,
             "module": "account",
             "action": "txlist",
             "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
@@ -38,7 +39,7 @@ async def whale(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "sort": "desc",
             "apikey": ETHERSCAN_KEY,
         }
-        res = requests.get(ETHERSCAN_URL, params=params, timeout=10)
+        res = requests.get(ETHERSCAN_V2, params=params, timeout=10)
         res.raise_for_status()
         result = res.json().get("result", [])
     except Exception as e:
