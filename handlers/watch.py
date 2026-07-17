@@ -10,11 +10,9 @@ from telegram.ext import CommandHandler, ContextTypes
 from lang import EN, FA, get_lang
 
 WATCH_FILE = Path(__file__).parent.parent / "wallet-monitor.json"
-LAST_TX_FILE = Path(__file__).parent.parent / "last-tx.json"
+LAST_BLOCK_FILE = Path(__file__).parent.parent / "last-block.json"
 ETHERSCAN_KEY = os.getenv("ETHERSCAN_API_KEY")
 BLOCKSCOUT_KEY = os.getenv("BLOCKSCOUT_API_KEY")
-ETHERSCAN_V2 = "https://api.etherscan.io/v2/api"
-BLOCKSCOUT_V2 = "https://api.blockscout.com/v2/api"
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ CHAINS = {
     "rhodefi": {"id": 4663, "label": "Robinhood Chain", "api": "blockscout"},
 }
 
-CHAIN_ACTIONS = ["txlist", "tokentx"]
+FALLBACK_CHAINS = {}  # chains where etherscan is paid-only; we use blockscout instead
 
 
 def _load_json(path):
@@ -57,16 +55,16 @@ def _save_json(path, data):
     path.write_text(json.dumps(data, indent=2))
 
 
-def _normalize_entry(entry):
-    """Convert old format (string address) to new format (dict)."""
+def _normalize(entry):
     if isinstance(entry, str):
         return {"address": entry, "chain": "eth"}
     return entry
 
 
-def _tx_key(entry):
-    """Unique key for last-tx tracking."""
-    return f"{entry['address']}_{entry['chain']}"
+def _key(entry, chain_name=None):
+    e = _normalize(entry)
+    c = chain_name or e["chain"]
+    return f"{e['address']}_{c}"
 
 
 async def watch(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -92,10 +90,7 @@ async def watch(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = _load_json(WATCH_FILE)
     uid_str = str(uid)
-    if uid_str not in data:
-        data[uid_str] = []
-
-    normalized = [_normalize_entry(e) for e in data[uid_str]]
+    normalized = [_normalize(e) for e in data.get(uid_str, [])]
     for e in normalized:
         if e["address"] == address and e["chain"] == chain:
             await update.message.reply_text(t["watch_exists"], parse_mode="Markdown")
@@ -105,6 +100,12 @@ async def watch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     normalized.append(entry)
     data[uid_str] = normalized
     _save_json(WATCH_FILE, data)
+
+    # Remove old last-block entry so next check treats it as first-run
+    bk = _key(entry)
+    blocks = _load_json(LAST_BLOCK_FILE)
+    blocks.pop(bk, None)
+    _save_json(LAST_BLOCK_FILE, blocks)
 
     label = CHAINS[chain]["label"]
     await update.message.reply_text(
@@ -129,12 +130,12 @@ async def unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t["watch_not_found"], parse_mode="Markdown")
         return
 
-    normalized = [_normalize_entry(e) for e in data[uid_str]]
+    normalized = [_normalize(e) for e in data[uid_str]]
     new_list = []
-    removed = False
+    removed = []
     for e in normalized:
         if e["address"] == address and (chain is None or e["chain"] == chain):
-            removed = True
+            removed.append(e)
         else:
             new_list.append(e)
 
@@ -146,9 +147,18 @@ async def unwatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not new_list:
         del data[uid_str]
     _save_json(WATCH_FILE, data)
-    label = f" ({CHAINS[chain]['label']})" if chain else ""
+
+    # Also clean up last-block entries
+    blocks = _load_json(LAST_BLOCK_FILE)
+    for e in removed:
+        blocks.pop(_key(e), None)
+    _save_json(LAST_BLOCK_FILE, blocks)
+
+    parts = [address]
+    if chain:
+        parts.append(f"({CHAINS[chain]['label']})")
     await update.message.reply_text(
-        t["unwatch_done"].format(f"{address}{label}"), parse_mode="Markdown"
+        t["unwatch_done"].format(" ".join(parts)), parse_mode="Markdown"
     )
 
 
@@ -157,8 +167,7 @@ async def wallets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = FA if get_lang(uid) == "fa" else EN
 
     data = _load_json(WATCH_FILE)
-    uid_str = str(uid)
-    entries = [_normalize_entry(e) for e in data.get(uid_str, [])]
+    entries = [_normalize(e) for e in data.get(str(uid), [])]
 
     if not entries:
         await update.message.reply_text(t["wallets_empty"], parse_mode="Markdown")
@@ -172,73 +181,56 @@ async def wallets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
-def _fetch_txs(address: str, chain_name: str, action: str):
+def _fetch(address, chain_name):
+    """Fetch latest normal tx + token tx for a wallet on a chain."""
     chain = CHAINS[chain_name]
     chainid = chain["id"]
     api = chain.get("api", "etherscan")
 
     if api == "blockscout":
         key = os.getenv("BLOCKSCOUT_API_KEY")
-        url = "https://api.blockscout.com/v2/api"
-        params = {
-            "chain_id": chainid,
-            "module": "account",
-            "action": action,
-            "address": address,
-            "sort": "desc",
-            "offset": 5,
-        }
-        if key:
-            params["apikey"] = key
+        base = "https://api.blockscout.com/v2/api"
+        cid_param = "chain_id"
     else:
         key = os.getenv("ETHERSCAN_API_KEY")
-        url = "https://api.etherscan.io/v2/api"
-        params = {
-            "chainid": chainid,
-            "module": "account",
-            "action": action,
-            "address": address,
-            "startblock": 0,
-            "endblock": 99999999,
-            "sort": "desc",
-            "page": 1,
-            "offset": 5,
-        }
-        if key:
-            params["apikey"] = key
+        base = "https://api.etherscan.io/v2/api"
+        cid_param = "chainid"
 
-    res = requests.get(url, params=params, timeout=10)
-    txs = res.json().get("result", [])
-    return txs if isinstance(txs, list) else []
+    out = []
+    for action in ("txlist", "tokentx"):
+        try:
+            params = {cid_param: chainid, "module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
+            if key:
+                params["apikey"] = key
+            r = requests.get(base, params=params, timeout=12)
+            items = r.json().get("result", [])
+            if isinstance(items, list):
+                out.extend(items)
+        except Exception as e:
+            logger.warning(f"_fetch {chain_name}/{action} {address[:10]}: {e}")
+    return out
 
 
-def _format_tx(tx: dict, address: str, chain_label: str) -> dict:
+def format_tx(tx, address, chain_label):
     value_raw = int(tx.get("value", 0))
     is_token = "tokenSymbol" in tx
-
     if is_token:
-        token_symbol = tx.get("tokenSymbol", "?")
-        token_decimal = int(tx.get("tokenDecimal", 18))
-        token_value = value_raw / (10 ** token_decimal)
-        value_label = f"{token_value:,.4f} {token_symbol}"
-        usd_value = None
-        tx_hash = tx.get("hash", "")
+        sym = tx.get("tokenSymbol", "?")
+        dec = int(tx.get("tokenDecimal", 18))
+        val = value_raw / (10 ** dec)
+        label = f"{val:,.4f} {sym}"
     else:
-        eth_value = value_raw / 1e18
-        value_label = f"{eth_value:.4f} {chain_label}"
-        usd_value = eth_value
-        tx_hash = tx.get("hash", "")
-
+        val = value_raw / 1e18
+        label = f"{val:.4f} {chain_label}"
     return {
-        "hash": tx_hash,
-        "value_label": value_label,
-        "usd_value": usd_value,
+        "hash": tx.get("hash", ""),
+        "label": label,
         "from": tx.get("from", ""),
         "to": tx.get("to", ""),
+        "block": int(tx.get("blockNumber", 0) or 0),
         "is_token": is_token,
-        "token_symbol": tx.get("tokenSymbol"),
-        "chain_label": chain_label,
-        "_address": address,
+        "chain": chain_label,
+        "address": address,
     }
 
 
@@ -247,67 +239,72 @@ def check_new_txs():
         return {}
 
     data = _load_json(WATCH_FILE)
-    last_tx = _load_json(LAST_TX_FILE)
-    notifications = {}
+    blocks = _load_json(LAST_BLOCK_FILE)
+    out = {}
 
     for uid_str, entries in data.items():
         for raw in entries:
-            entry = _normalize_entry(raw)
+            entry = _normalize(raw)
             addr = entry["address"]
-            chain_name = entry["chain"]
-            chain_info = CHAINS.get(chain_name)
-            if not chain_info:
+            cn = entry["chain"]
+            ci = CHAINS.get(cn)
+            if not ci:
                 continue
-            chain_label = chain_info["label"]
-            chainid = chain_info["id"]
+            cl = ci["label"]
 
-            all_txs = []
-            seen_hashes = set()
+            txs = _fetch(addr, cn)
+            if not txs:
+                logger.info(f"check {addr[:10]}@{cn}: no txs")
+                continue
 
-            for action in CHAIN_ACTIONS:
-                try:
-                    txs = _fetch_txs(addr, chain_name, action)
-                    for tx in txs:
-                        h = tx.get("hash", "")
-                        if h and h not in seen_hashes:
-                            seen_hashes.add(h)
-                            all_txs.append((h, tx))
-                except Exception as e:
-                    logger.warning(f"{chain_name}/{action} failed for {addr}: {e}")
+            # collect unique hashes, find max block
+            seen = set()
+            latest_block = 0
+            new_txs = []
+            for tx in sorted(txs, key=lambda x: int(x.get("blockNumber", 0) or 0), reverse=True):
+                h = tx.get("hash", "")
+                if not h or h in seen:
                     continue
+                seen.add(h)
+                bn = int(tx.get("blockNumber", 0) or 0)
+                if bn > latest_block:
+                    latest_block = bn
+                new_txs.append(tx)
 
-            all_txs.sort(key=lambda x: int(x[1].get("timeStamp", 0) or 0), reverse=True)
-            all_txs = all_txs[:5]
-
-            if not all_txs:
+            if not latest_block:
                 continue
 
-            latest_hash = all_txs[0][0]
-            tx_key = _tx_key(entry)
-            prev_hash = last_tx.get(tx_key)
-            new_items = []
+            base_k = _key(entry)
+            prev_block = blocks.get(base_k, 0)
 
-            for h, tx in all_txs:
-                if h == prev_hash:
-                    break
-                new_items.append(tx)
-                if len(new_items) >= 2:
-                    break
+            if prev_block == 0:
+                # first run — just remember the block
+                blocks[base_k] = latest_block
+                logger.info(f"check {addr[:10]}@{cn}: first run, stored block {latest_block}")
+                continue
 
-            if new_items:
-                last_tx[tx_key] = latest_hash
-                if prev_hash is not None:
-                    if uid_str not in notifications:
-                        notifications[uid_str] = []
-                    for tx in new_items:
-                        notifications[uid_str].append(
-                            _format_tx(tx, addr, chain_label)
-                        )
-                else:
-                    last_tx[tx_key] = latest_hash
+            if latest_block <= prev_block:
+                continue
 
-    _save_json(LAST_TX_FILE, last_tx)
-    return notifications
+            # find txs with block > prev_block (up to 3)
+            fresh = []
+            for tx in new_txs:
+                bn = int(tx.get("blockNumber", 0) or 0)
+                if bn > prev_block:
+                    fresh.append(tx)
+                    if len(fresh) >= 3:
+                        break
+
+            if fresh:
+                blocks[base_k] = latest_block
+                if uid_str not in out:
+                    out[uid_str] = []
+                for tx in fresh:
+                    out[uid_str].append(format_tx(tx, addr, cl))
+                logger.info(f"check {addr[:10]}@{cn}: {len(fresh)} new tx(s) (block {prev_block}→{latest_block})")
+
+    _save_json(LAST_BLOCK_FILE, blocks)
+    return out
 
 
 def get_handlers():

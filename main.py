@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-import time
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -49,51 +48,25 @@ async def check_wallets(context: ContextTypes.DEFAULT_TYPE):
         for tx in txs:
             uid = int(uid_str)
             lang_code = get_lang(uid)
-            t = FA if lang_code == "fa" else EN
-            addr = tx["_address"]
             from_short = tx["from"][:10] + "..." + tx["from"][-6:] if tx.get("from") and len(tx["from"]) > 16 else tx.get("from", "?")
             to_short = tx["to"][:10] + "..." + tx["to"][-6:] if tx.get("to") and len(tx["to"]) > 16 else tx.get("to", "N/A")
             tx_hash = tx.get("hash", "?")
             tx_short = tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash
+            chain_tag = f" [{tx['chain']}]"
+            header = "🔔 *Token Tx*" + chain_tag if tx["is_token"] else "🔔 *New Tx*" + chain_tag
 
-            chain_tag = f" [{tx.get('chain_label', '')}]"
-            if tx["is_token"]:
-                text = (
-                    f"🔔 *{'تراکنش توکن' if lang_code == 'fa' else 'Token Transaction'}*{chain_tag}\n\n"
-                    f"💱 {tx['value_label']}\n"
-                    f"📤 {from_short}\n"
-                    f"📥 {to_short}\n"
-                    f"📋 `{tx_short}`\n"
-                    f"🔗 [{'مشاهده' if lang_code == 'fa' else 'View'}](https://etherscan.io/tx/{tx_hash})"
-                    f" — *{tx.get('token_symbol', '?')}*"
-                )
-            else:
-                usd_value = float(tx.get("usd_value", 0) or 0) * _get_eth_price()
-                text = t["watch_notification"].format(tx_short, tx["value_label"], usd_value, from_short, to_short, tx_hash)
-                text = f"🔔 *New Tx*{chain_tag}\n\n" + text[text.index("📋"):]
-
+            text = (
+                f"{header}\n\n"
+                f"💱 {tx['label']}\n"
+                f"📤 {from_short}\n"
+                f"📥 {to_short}\n"
+                f"📋 `{tx_short}`\n"
+                f"🔗 [{'مشاهده' if lang_code == 'fa' else 'View'}](https://etherscan.io/tx/{tx_hash})"
+            )
             try:
                 await context.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown", disable_web_page_preview=True)
             except Exception as e:
                 logger.warning(f"Failed to send wallet notification to {uid}: {e}")
-
-
-_eth_price_cache = 0.0
-_eth_price_ts = 0.0
-
-
-def _get_eth_price() -> float:
-    global _eth_price_cache, _eth_price_ts
-    now = time.time()
-    if now - _eth_price_ts > 30:
-        try:
-            import requests
-            r = requests.get("https://api.coingecko.com/api/v3/simple/price", params={"ids": "ethereum", "vs_currencies": "usd"}, timeout=5)
-            _eth_price_cache = r.json().get("ethereum", {}).get("usd", 0)
-            _eth_price_ts = now
-        except Exception:
-            pass
-    return _eth_price_cache
 
 
 async def ai_fallback(update: Update, context):
