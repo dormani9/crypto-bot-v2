@@ -17,28 +17,28 @@ BLOCKSCOUT_KEY = os.getenv("BLOCKSCOUT_API_KEY")
 logger = logging.getLogger(__name__)
 
 CHAINS = {
-    "eth": {"id": 1, "label": "Ethereum", "api": "etherscan"},
-    "bsc": {"id": 56, "label": "BSC", "api": "etherscan"},
-    "polygon": {"id": 137, "label": "Polygon", "api": "etherscan"},
-    "arb": {"id": 42161, "label": "Arbitrum", "api": "etherscan"},
-    "op": {"id": 10, "label": "Optimism", "api": "etherscan"},
-    "base": {"id": 8453, "label": "Base", "api": "etherscan"},
-    "avax": {"id": 43114, "label": "Avalanche", "api": "etherscan"},
-    "cro": {"id": 25, "label": "Cronos", "api": "etherscan"},
-    "ftm": {"id": 250, "label": "Fantom", "api": "etherscan"},
-    "gnosis": {"id": 100, "label": "Gnosis", "api": "etherscan"},
-    "zksync": {"id": 324, "label": "zkSync Era", "api": "etherscan"},
-    "linea": {"id": 59144, "label": "Linea", "api": "etherscan"},
-    "scroll": {"id": 534352, "label": "Scroll", "api": "etherscan"},
-    "blast": {"id": 81457, "label": "Blast", "api": "etherscan"},
-    "mantle": {"id": 5000, "label": "Mantle", "api": "etherscan"},
-    "moonbeam": {"id": 1284, "label": "Moonbeam", "api": "etherscan"},
-    "celo": {"id": 42220, "label": "Celo", "api": "etherscan"},
-    "polygonzk": {"id": 1101, "label": "Polygon zkEVM", "api": "etherscan"},
-    "aurora": {"id": 1313161554, "label": "Aurora", "api": "etherscan"},
-    "metis": {"id": 1088, "label": "Metis", "api": "etherscan"},
-    "hyperevm": {"id": 999, "label": "HyperEVM", "api": "etherscan"},
-    "unichain": {"id": 130, "label": "Unichain", "api": "etherscan"},
+    "eth": {"id": 1, "label": "Ethereum", "domain": "api.etherscan.io"},
+    "bsc": {"id": 56, "label": "BSC", "domain": "api.bscscan.com"},
+    "polygon": {"id": 137, "label": "Polygon", "domain": "api.polygonscan.com"},
+    "arb": {"id": 42161, "label": "Arbitrum", "domain": "api.arbiscan.io"},
+    "op": {"id": 10, "label": "Optimism", "domain": "api-optimistic.etherscan.io"},
+    "base": {"id": 8453, "label": "Base", "domain": "api.basescan.org"},
+    "avax": {"id": 43114, "label": "Avalanche", "domain": "api.snowtrace.io"},
+    "cro": {"id": 25, "label": "Cronos", "domain": "api.cronoscan.com"},
+    "ftm": {"id": 250, "label": "Fantom", "domain": "api.ftmscan.com"},
+    "gnosis": {"id": 100, "label": "Gnosis", "domain": "api.gnosisscan.io"},
+    "zksync": {"id": 324, "label": "zkSync Era", "domain": "api-era.zksync.network"},
+    "linea": {"id": 59144, "label": "Linea", "domain": "api.lineascan.build"},
+    "scroll": {"id": 534352, "label": "Scroll", "domain": "api.scrollscan.com"},
+    "blast": {"id": 81457, "label": "Blast", "domain": "api.blastscan.io"},
+    "mantle": {"id": 5000, "label": "Mantle", "domain": "api.mantlescan.xyz"},
+    "moonbeam": {"id": 1284, "label": "Moonbeam", "domain": "api-moonbeam.moonscan.io"},
+    "celo": {"id": 42220, "label": "Celo", "domain": "api.celoscan.io"},
+    "polygonzk": {"id": 1101, "label": "Polygon zkEVM", "domain": "api-zkevm.polygonscan.com"},
+    "aurora": {"id": 1313161554, "label": "Aurora", "domain": "api.aurorascan.dev"},
+    "metis": {"id": 1088, "label": "Metis", "domain": "api-andromeda.metisscan.xyz"},
+    "hyperevm": {"id": 999, "label": "HyperEVM", "domain": "api.etherscan.io", "v2": True},
+    "unichain": {"id": 130, "label": "Unichain", "domain": "api.etherscan.io", "v2": True},
     "rhodefi": {"id": 4663, "label": "Robinhood Chain", "api": "blockscout"},
 }
 
@@ -190,25 +190,58 @@ async def wallets(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def _fetch(address, chain_name):
     """Fetch latest normal tx + token tx for a wallet on a chain."""
     chain = CHAINS[chain_name]
-    chainid = chain["id"]
+    domain = chain.get("domain")
     api = chain.get("api", "etherscan")
 
+    out = []
+
+    # Blockscout-based chains
     if api == "blockscout":
         key = os.getenv("BLOCKSCOUT_API_KEY")
-        base = "https://api.blockscout.com/v2/api"
-        cid_param = "chain_id"
-    else:
-        key = os.getenv("ETHERSCAN_API_KEY")
-        base = "https://api.etherscan.io/v2/api"
-        cid_param = "chainid"
+        for action in ("txlist", "tokentx"):
+            try:
+                params = {"chain_id": chain["id"], "module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
+                if key:
+                    params["apikey"] = key
+                r = requests.get("https://api.blockscout.com/v2/api", params=params, timeout=12)
+                data = r.json()
+                items = data.get("result", [])
+                if isinstance(items, list):
+                    out.extend(items)
+                else:
+                    logger.info(f"_fetch {chain_name}/{action}: msg={data.get('message','?')} result={str(items)[:200]}")
+            except Exception as e:
+                logger.warning(f"_fetch {chain_name}/{action} {address[:10]}: {e}")
+        return out
 
-    out = []
+    # HyperEVM / Unichain — use Etherscan v2 api (works on free tier)
+    v2 = chain.get("v2", False)
+    if v2:
+        key = os.getenv("ETHERSCAN_API_KEY")
+        for action in ("txlist", "tokentx"):
+            try:
+                params = {"chainid": chain["id"], "module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
+                if key:
+                    params["apikey"] = key
+                r = requests.get("https://api.etherscan.io/v2/api", params=params, timeout=12)
+                data = r.json()
+                items = data.get("result", [])
+                if isinstance(items, list):
+                    out.extend(items)
+                else:
+                    logger.info(f"_fetch {chain_name}/{action}: msg={data.get('message','?')} result={str(items)[:200]}")
+            except Exception as e:
+                logger.warning(f"_fetch {chain_name}/{action} {address[:10]}: {e}")
+        return out
+
+    # Standard Etherscan-family per-chain API (no key needed — free tier, rate limited)
+    eth_key = os.getenv("ETHERSCAN_API_KEY")
     for action in ("txlist", "tokentx"):
         try:
-            params = {cid_param: chainid, "module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
-            if key:
-                params["apikey"] = key
-            r = requests.get(base, params=params, timeout=12)
+            params = {"module": "account", "action": action, "address": address, "sort": "desc", "offset": 3}
+            if chain_name == "eth" and eth_key:
+                params["apikey"] = eth_key
+            r = requests.get(f"https://{domain}/api", params=params, timeout=12)
             data = r.json()
             items = data.get("result", [])
             if isinstance(items, list):
