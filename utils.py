@@ -1,7 +1,10 @@
+import logging
 import os
 from typing import Optional, Tuple
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price"
 CG_API_KEY = os.getenv("COINGECKO_API_KEY")
@@ -41,11 +44,14 @@ def fetch_toman_price() -> Tuple[Optional[int], Optional[int], Optional[str]]:
     for src in TOMAN_SOURCES:
         try:
             params = src.get("params", {})
+            logger.info(f"Trying {src['name']}...")
             res = requests.get(src["url"], params=params, timeout=8)
             res.raise_for_status()
             data = res.json()
             usdt_price = src["parse"](data)
+            logger.info(f"{src['name']} success: {usdt_price}")
             return usdt_price, usdt_price, src["name"]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"{src['name']} failed: {e}")
             continue
     return None, None, None

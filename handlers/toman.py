@@ -16,7 +16,13 @@ async def toman(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usdt_toman, dollar_toman, source = fetch_toman_price()
 
     if not usdt_toman:
-        await msg.edit_text("خطا در دریافت قیمت از تمام منابع." if t == FA else "All sources failed.")
+        await msg.edit_text(
+            "❌ خطا در دریافت قیمت از تمام منابع.\n"
+            "احتمالاً سرورهای ایران از Railway قابل دسترسی نیستند."
+            if t == FA else
+            "❌ All sources failed.\n"
+            "Iranian servers may not be reachable from Railway."
+        )
         return
 
     lines = [

@@ -23,6 +23,8 @@ async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         eth_price = eth_resp.json().get("ethereum", {}).get("usd", "?")
 
+        safe = normal = fast = "?"
+
         if ETHERSCAN_KEY:
             params = {
                 "module": "gastracker",
@@ -30,22 +32,24 @@ async def gas(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "apikey": ETHERSCAN_KEY,
             }
             gas_resp = requests.get("https://api.etherscan.io/api", params=params, timeout=10)
-            data = gas_resp.json().get("result", {})
-            safe = data.get("SafeGasPrice", "?")
-            normal = data.get("ProposeGasPrice", "?")
-            fast = data.get("FastGasPrice", "?")
-        else:
-            safe = normal = fast = "?"
+            data = gas_resp.json().get("result")
+            if isinstance(data, dict):
+                safe = data.get("SafeGasPrice", "?")
+                normal = data.get("ProposeGasPrice", "?")
+                fast = data.get("FastGasPrice", "?")
 
-        await msg.edit_text(
+        text = (
             f"{t['gas_title']}"
             f"{t['gas_safe']} `{safe}` Gwei\n"
             f"{t['gas_normal']} `{normal}` Gwei\n"
             f"{t['gas_fast']} `{fast}` Gwei\n\n"
             f"ETH: `${eth_price}`"
-            + ("" if ETHERSCAN_KEY else "\n\n⚠️ Set ETHERSCAN_API_KEY for live gas data"),
-            parse_mode="Markdown",
         )
+        if not ETHERSCAN_KEY:
+            text += "\n\n⚠️ Set ETHERSCAN_API_KEY for live gas"
+
+        await msg.edit_text(text, parse_mode="Markdown")
+
     except Exception as e:
         await msg.edit_text(f"{t['ai_error']} {e}")
 
