@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import sys
@@ -6,11 +5,11 @@ import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 from handlers import fng, gas, menu, news, portfolio, price, start, toman, watch, whale
 
-from lang import FA, get_lang
+from lang import EN, FA, get_lang
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 load_dotenv()
@@ -65,17 +64,11 @@ async def _send_wallet_notification(uid: int, tx: dict, context):
         logger.warning(f"Failed to send wallet notification to {uid}: {e}")
 
 
-async def _wallet_loop(app):
-    """Background loop — polls wallet monitor every 30 seconds."""
-    while True:
-        try:
-            notifications = watch.check_new_txs()
-            for uid_str, txs in notifications.items():
-                for tx in txs:
-                    await _send_wallet_notification(int(uid_str), tx, app)
-        except Exception as e:
-            logger.warning(f"_wallet_loop error: {e}")
-        await asyncio.sleep(30)
+async def check_wallets(context: ContextTypes.DEFAULT_TYPE):
+    notifications = watch.check_new_txs()
+    for uid_str, txs in notifications.items():
+        for tx in txs:
+            await _send_wallet_notification(int(uid_str), tx, context)
 
 
 async def ai_fallback(update: Update, context):
@@ -107,10 +100,7 @@ def main():
         print("ERROR: Set TELEGRAM_BOT_TOKEN in .env")
         sys.exit(1)
 
-    async def post_init(application):
-        asyncio.create_task(_wallet_loop(application))
-
-    app = ApplicationBuilder().token(token).post_init(post_init).build()
+    app = ApplicationBuilder().token(token).build()
 
     for module in [price, fng, news, whale, gas, portfolio, toman, menu, watch]:
         for handler in module.get_handlers():
@@ -123,10 +113,9 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_fallback))
 
-    async def on_start(app):
-        asyncio.create_task(_wallet_loop(app))
-
-    app.post_init = on_start
+    jq = app.job_queue
+    if jq:
+        jq.run_repeating(check_wallets, interval=45, first=10)
 
     print("Bot v2 is running...")
     app.run_polling()
