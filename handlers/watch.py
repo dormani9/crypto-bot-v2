@@ -307,9 +307,29 @@ def check_new_txs():
     return out
 
 
+async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manual check — call /check to force a wallet scan right now."""
+    uid = update.effective_user.id
+    t = FA if get_lang(uid) == "fa" else EN
+    msg = await update.message.reply_text("🔍 Scanning wallets...")
+    try:
+        result = check_new_txs()
+        my_txs = result.get(str(uid), [])
+        if not my_txs:
+            await msg.edit_text("✅ No new transactions found.")
+        else:
+            from main import _send_wallet_notification
+            for tx in my_txs:
+                await _send_wallet_notification(uid, tx, context)
+            await msg.edit_text(f"✅ Sent {len(my_txs)} notification(s).")
+    except Exception as e:
+        await msg.edit_text(f"❌ Error: {e}")
+
+
 def get_handlers():
     return [
         CommandHandler("watch", watch),
         CommandHandler("unwatch", unwatch),
         CommandHandler("wallets", wallets),
+        CommandHandler("check", check),
     ]

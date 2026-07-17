@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sys
@@ -5,11 +6,11 @@ import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, MessageHandler, filters
 
 from handlers import fng, gas, menu, news, portfolio, price, start, toman, watch, whale
 
-from lang import EN, FA, get_lang
+from lang import FA, get_lang
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 load_dotenv()
@@ -42,31 +43,39 @@ async def _ai_call(question: str, client: OpenAI) -> str:
     return res.choices[0].message.content
 
 
-async def check_wallets(context: ContextTypes.DEFAULT_TYPE):
-    notifications = watch.check_new_txs()
-    for uid_str, txs in notifications.items():
-        for tx in txs:
-            uid = int(uid_str)
-            lang_code = get_lang(uid)
-            from_short = tx["from"][:10] + "..." + tx["from"][-6:] if tx.get("from") and len(tx["from"]) > 16 else tx.get("from", "?")
-            to_short = tx["to"][:10] + "..." + tx["to"][-6:] if tx.get("to") and len(tx["to"]) > 16 else tx.get("to", "N/A")
-            tx_hash = tx.get("hash", "?")
-            tx_short = tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash
-            chain_tag = f" [{tx['chain']}]"
-            header = "🔔 *Token Tx*" + chain_tag if tx["is_token"] else "🔔 *New Tx*" + chain_tag
+async def _send_wallet_notification(uid: int, tx: dict, context):
+    lang_code = get_lang(uid)
+    from_short = tx["from"][:10] + "..." + tx["from"][-6:] if tx.get("from") and len(tx["from"]) > 16 else tx.get("from", "?")
+    to_short = tx["to"][:10] + "..." + tx["to"][-6:] if tx.get("to") and len(tx["to"]) > 16 else tx.get("to", "N/A")
+    tx_hash = tx.get("hash", "?")
+    tx_short = tx_hash[:10] + "..." + tx_hash[-6:] if len(tx_hash) > 16 else tx_hash
+    chain_tag = f" [{tx['chain']}]"
+    header = "🔔 *Token Tx*" + chain_tag if tx["is_token"] else "🔔 *New Tx*" + chain_tag
+    text = (
+        f"{header}\n\n"
+        f"💱 {tx['label']}\n"
+        f"📤 {from_short}\n"
+        f"📥 {to_short}\n"
+        f"📋 `{tx_short}`\n"
+        f"🔗 [{'مشاهده' if lang_code == 'fa' else 'View'}](https://etherscan.io/tx/{tx_hash})"
+    )
+    try:
+        await context.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown", disable_web_page_preview=True)
+    except Exception as e:
+        logger.warning(f"Failed to send wallet notification to {uid}: {e}")
 
-            text = (
-                f"{header}\n\n"
-                f"💱 {tx['label']}\n"
-                f"📤 {from_short}\n"
-                f"📥 {to_short}\n"
-                f"📋 `{tx_short}`\n"
-                f"🔗 [{'مشاهده' if lang_code == 'fa' else 'View'}](https://etherscan.io/tx/{tx_hash})"
-            )
-            try:
-                await context.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown", disable_web_page_preview=True)
-            except Exception as e:
-                logger.warning(f"Failed to send wallet notification to {uid}: {e}")
+
+async def _wallet_loop(app):
+    """Background loop — polls wallet monitor every 30 seconds."""
+    while True:
+        try:
+            notifications = watch.check_new_txs()
+            for uid_str, txs in notifications.items():
+                for tx in txs:
+                    await _send_wallet_notification(int(uid_str), tx, app)
+        except Exception as e:
+            logger.warning(f"_wallet_loop error: {e}")
+        await asyncio.sleep(30)
 
 
 async def ai_fallback(update: Update, context):
@@ -98,7 +107,10 @@ def main():
         print("ERROR: Set TELEGRAM_BOT_TOKEN in .env")
         sys.exit(1)
 
-    app = ApplicationBuilder().token(token).build()
+    async def post_init(application):
+        asyncio.create_task(_wallet_loop(application))
+
+    app = ApplicationBuilder().token(token).post_init(post_init).build()
 
     for module in [price, fng, news, whale, gas, portfolio, toman, menu, watch]:
         for handler in module.get_handlers():
@@ -111,9 +123,10 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_fallback))
 
-    job_queue = app.job_queue
-    if job_queue:
-        job_queue.run_repeating(check_wallets, interval=45, first=10)
+    async def on_start(app):
+        asyncio.create_task(_wallet_loop(app))
+
+    app.post_init = on_start
 
     print("Bot v2 is running...")
     app.run_polling()
