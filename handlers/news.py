@@ -9,7 +9,7 @@ EN_FEEDS = [
 
 FA_FEEDS = [
     ("ارزدیجیتال", "https://arzdigital.com/feed/"),
-    ("نماگر", "https://nomagar.com/feed/"),
+    ("ارزدیجیتال فوری", "https://arzdigital.com/breaking/feed/"),
 ]
 
 
