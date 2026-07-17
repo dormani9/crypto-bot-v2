@@ -44,7 +44,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(t["gas"], callback_data="menu_gas"),
         ],
         [
-            InlineKeyboardButton(t["portfolio"], callback_data="menu_portfolio"),
+            InlineKeyboardButton(t["wallet"], callback_data="menu_wallet"),
             InlineKeyboardButton(t["ai"], callback_data="menu_ai"),
         ],
     ]
