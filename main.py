@@ -14,9 +14,14 @@ from lang import EN, FA, get_lang
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 FREEMODEL_KEY = os.getenv("FREEMODEL_API_KEY")
-BASE_URL = "https://api.freemodel.dev/v1"
-AI_CLIENT = OpenAI(api_key=FREEMODEL_KEY, base_url=BASE_URL) if FREEMODEL_KEY else None
+BASE_URLS = [
+    "https://api.freemodel.dev/v1",
+    "https://vip-sg.freemodel.dev/v1",
+    "https://api-t2-sg.freemodel.dev/v1",
+]
 
 AI_SYSTEM = (
     "You are a cryptocurrency expert. Answer concisely and accurately "
@@ -24,8 +29,21 @@ AI_SYSTEM = (
 )
 
 
+async def _ai_call(question: str, client: OpenAI) -> str:
+    res = client.chat.completions.create(
+        model="gpt-5.4-mini",
+        messages=[
+            {"role": "system", "content": AI_SYSTEM},
+            {"role": "user", "content": question},
+        ],
+        max_tokens=500,
+        timeout=15,
+    )
+    return res.choices[0].message.content
+
+
 async def ai_fallback(update: Update, context):
-    if not AI_CLIENT:
+    if not FREEMODEL_KEY:
         return
 
     uid = update.effective_user.id
@@ -34,20 +52,17 @@ async def ai_fallback(update: Update, context):
 
     msg = await update.message.reply_text(t["ai_thinking"])
 
-    try:
-        res = AI_CLIENT.chat.completions.create(
-            model="gpt-5.4-mini",
-            messages=[
-                {"role": "system", "content": AI_SYSTEM},
-                {"role": "user", "content": question},
-            ],
-            max_tokens=500,
-            timeout=30,
-        )
-        answer = res.choices[0].message.content
-        await msg.edit_text(f"🤖 *AI Assistant*\n\n{answer}", parse_mode="Markdown")
-    except Exception as e:
-        await msg.edit_text(f"{t['ai_error']} {e}")
+    for url in BASE_URLS:
+        try:
+            client = OpenAI(api_key=FREEMODEL_KEY, base_url=url)
+            answer = await _ai_call(question, client)
+            await msg.edit_text(f"🤖 *AI Assistant*\n\n{answer}", parse_mode="Markdown")
+            return
+        except Exception:
+            logger.warning(f"AI fallback failed on {url}, trying next...")
+            continue
+
+    await msg.edit_text(f"{t['ai_error']} All AI endpoints failed.")
 
 
 def main():
