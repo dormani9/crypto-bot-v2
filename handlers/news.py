@@ -1,18 +1,21 @@
 import feedparser
-from deep_translator import GoogleTranslator
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
 
-FEEDS = [
+EN_FEEDS = [
     ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
     ("CoinTelegraph", "https://cointelegraph.com/rss"),
 ]
-TRANSLATOR = GoogleTranslator(source="en", target="fa")
+
+FA_FEEDS = [
+    ("ارزدیجیتال", "https://arzdigital.com/feed/"),
+    ("نماگر", "https://nomagar.com/feed/"),
+]
 
 
-def _fetch(limit: int):
+def _fetch(feeds, limit: int):
     articles = []
-    for source, url in FEEDS:
+    for source, url in feeds:
         try:
             feed = feedparser.parse(url)
             for entry in feed.entries[:limit]:
@@ -24,7 +27,7 @@ def _fetch(limit: int):
 
 async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
     limit = min(int(context.args[0]), 10) if context.args and context.args[0].isdigit() else 5
-    articles = _fetch(limit)
+    articles = _fetch(EN_FEEDS, limit)
 
     if not articles:
         await update.message.reply_text("No news found.")
@@ -39,7 +42,7 @@ async def news(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def fnews(update: Update, context: ContextTypes.DEFAULT_TYPE):
     limit = min(int(context.args[0]), 10) if context.args and context.args[0].isdigit() else 5
-    articles = _fetch(limit)
+    articles = _fetch(FA_FEEDS, limit)
 
     if not articles:
         await update.message.reply_text("خبری یافت نشد.")
@@ -47,11 +50,7 @@ async def fnews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lines = ["📰 *آخرین اخبار کریپتو*\n"]
     for i, a in enumerate(articles, 1):
-        try:
-            title_fa = TRANSLATOR.translate(a["title"])
-        except Exception:
-            title_fa = a["title"]
-        lines.append(f"🔹 *{title_fa}*")
+        lines.append(f"🔹 *{a['title']}*")
         lines.append(f"   📎 [مشاهده مطلب]({a['url']}) — {a['source']}\n")
 
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)

@@ -2,5 +2,4 @@ python-telegram-bot>=20.0
 requests
 python-dotenv
 feedparser
-deep-translator
 openai
