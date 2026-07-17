@@ -3,4 +3,4 @@ requests
 python-dotenv
 feedparser
 deep-translator
-google-genai
+openai
