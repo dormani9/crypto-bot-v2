@@ -1,10 +1,31 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import CommandHandler, ContextTypes
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, filters
 
 from lang import EN, FA, get_lang, set_lang
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+
+    keyboard = [
+        [
+            InlineKeyboardButton("🇬🇧 English", callback_data="lang_en"),
+            InlineKeyboardButton("🇮🇷 فارسی", callback_data="lang_fa"),
+        ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "🌐 *Select your language / زبان خود را انتخاب کنید:*\n\n"
+        "🇬🇧 English  —  🇮🇷 فارسی",
+        parse_mode="Markdown",
+        reply_markup=reply_markup,
+    )
+
+
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
     uid = update.effective_user.id
     lang = get_lang(uid)
     t = FA if lang == "fa" else EN
@@ -27,9 +48,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(t["ai"], callback_data="menu_ai"),
         ],
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(t["menu_title"], parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    await update.message.reply_text(t["menu_title"], parse_mode="Markdown", reply_markup=reply_markup)
+
+async def lang_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    uid = update.effective_user.id
+    lang = "fa" if query.data == "lang_fa" else "en"
+    set_lang(uid, lang)
+    await show_main_menu(update, context)
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -47,8 +75,6 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += t["help_gas"]
     text += t["help_portfolio"]
     text += t["help_ask"]
-
-    text += "\n💱 `/toman` — قیمت دلار و تتر به تومان"
 
     if lang == "fa":
         text += "\n🌐 `/lang` — تغییر زبان"
@@ -71,3 +97,7 @@ def get_handlers():
         CommandHandler("help", help_cmd),
         CommandHandler("lang", lang_cmd),
     ]
+
+
+def get_callback_handlers():
+    return [CallbackQueryHandler(lang_callback, pattern="^lang_")]

@@ -10,8 +10,22 @@ COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price"
 CG_API_KEY = os.getenv("COINGECKO_API_KEY")
 
 
+COIN_ALIASES = {
+    "btc": "bitcoin", "eth": "ethereum", "sol": "solana", "xrp": "ripple",
+    "ada": "cardano", "dot": "polkadot", "ltc": "litecoin", "link": "chainlink",
+    "matic": "matic-network", "avax": "avalanche-2", "bnb": "binancecoin",
+    "doge": "dogecoin", "trx": "tron", "atom": "cosmos", "uni": "uniswap",
+    "aave": "aave", "cro": "crypto-com-chain", "vet": "vechain",
+    "theta": "theta-token", "fil": "filecoin", "icp": "internet-computer",
+    "near": "near", "apt": "aptos", "sui": "sui", "arb": "arbitrum",
+    "op": "optimism", "inj": "injective", "ldo": "lido-dao",
+    "rune": "thorchain", "ftm": "fantom", "cake": "pancakeswap",
+}
+
+
 def fetch_prices(coin_ids: list[str]) -> dict:
-    ids = ",".join(c.lower() for c in coin_ids)
+    resolved = [COIN_ALIASES.get(c.lower(), c.lower()) for c in coin_ids]
+    ids = ",".join(resolved)
     params = {"ids": ids, "vs_currencies": "usd", "include_24hr_change": "true"}
     if CG_API_KEY:
         params["x_cg_demo_api_key"] = CG_API_KEY
