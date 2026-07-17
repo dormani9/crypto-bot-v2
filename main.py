@@ -115,7 +115,7 @@ def main():
 
     jq = app.job_queue
     if jq:
-        jq.run_repeating(check_wallets, interval=45, first=10)
+        jq.run_repeating(check_wallets, interval=15, first=10)
 
     print("Bot v2 is running...")
     app.run_polling()
